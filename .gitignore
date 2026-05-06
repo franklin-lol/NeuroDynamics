@@ -1,13 +1,47 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-operator_output/
-*.flac
-*_MAP.txt
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environments
 .env
 .venv
 env/
 venv/
 ENV/
+
+# IDEs
 .idea/
 .vscode/
+*.swp
+*.swo
+
+# Project Specific Outputs
+*.flac
+*.wav
+*_MAP.txt
+operator_output/
+genesis_output/
+
+# Legacy (Ensure v1_old is tracked, but its outputs are not)
+!v1_old/
+v1_old/**/operator_output/
+v1_old/**/*.flac
+v1_old/**/*_MAP.txt
