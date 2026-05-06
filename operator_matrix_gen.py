@@ -447,9 +447,10 @@ def stream_session(
     with sf.SoundFile(path, 'w', samplerate=SR, channels=2,
                       format='FLAC', subtype=BD) as f:
         # Set Metadata
-        f.artist  = 'franklin-sys'
-        f.date    = '2026'
-        f.comment = 'https://franklin-sys.vercel.app/'
+        f.artist    = 'franklin-sys'
+        f.date      = '2026'
+        f.license   = 'https://franklin-sys.vercel.app/'
+        f.copyright = 'franklin-sys (2026) | https://franklin-sys.vercel.app/'
 
         for i, ph in enumerate(phases):
             L, R = eng.build(ph)

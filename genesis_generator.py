@@ -800,9 +800,10 @@ def main():
     with sf.SoundFile(out_flac, 'w', samplerate=SR,
                       channels=2, format='FLAC', subtype='PCM_24') as fh:
         # Set Metadata
-        fh.artist  = 'franklin-sys'
-        fh.date    = '2026'
-        fh.comment = 'https://franklin-sys.vercel.app/'
+        fh.artist    = 'franklin-sys'
+        fh.date      = '2026'
+        fh.license   = 'https://franklin-sys.vercel.app/'
+        fh.copyright = 'franklin-sys (2026) | https://franklin-sys.vercel.app/'
 
         prev_tail = None
 
