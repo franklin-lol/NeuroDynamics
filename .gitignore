@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*$py.class
+operator_output/
+*.flac
+*_MAP.txt
+.env
+.venv
+env/
+venv/
+ENV/
+.idea/
+.vscode/
