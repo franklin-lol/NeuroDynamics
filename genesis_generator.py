@@ -1,149 +1,530 @@
 #!/usr/bin/env python3
 """
-╔════════════════════════════════════════════════════════════╗
-║  GENESIS — Psychoacoustic Engineering Suite                ║
-╠════════════════════════════════════════════════════════════╣
-║  44100 Hz | FLAC PCM-24 | Stereo                          ║
-║  Author: franklin-sys | https://franklin-sys.vercel.app/  ║
-╚════════════════════════════════════════════════════════════╝
-
-USAGE:
-  python genesis_generator.py                      # GENESIS (default)
-  python genesis_generator.py --profile WALK       # 30 min, motion
-  python genesis_generator.py --profile SLEEP      # 90 min, OBE windows
-  python genesis_generator.py --profile HEALER     # 75 min, deep delta
-  python genesis_generator.py --profile ORACLE     # 60 min, clairvoyance
-  python genesis_generator.py --profile WARRIOR    # 50 min, activation
-  python genesis_generator.py --map                # session map only, no render
-  python genesis_generator.py --all                # render all profiles
-
-REQUIRES:
-  pip install numpy scipy soundfile
-
-LAYER STACK per block (active flags shown in --map output):
-  Binaural       phase-accurate dual-octave pair + 1/f carrier/beat jitter
-  Isochronic     hard-gated AM — stronger cortical evoked response
-  CFC            theta→gamma phase-amplitude coupling (real hippocampal PAC)
-  ASSR-80Hz      brainstem + inferior colliculus entrainment, independent of 40Hz
-  ITD rotation   inter-aural phase sweep — vestibular / spatial circuits
-  Infra-mod      ultra-slow AM (0.025–0.10 Hz) — ANS + respiratory sync
-  SR noise       stochastic-resonance optimal: 15% of signal RMS
-  Lorenz chaos   deterministic chaos beat modulation — forces sustained response
-  HRTF approx   pinna reflection + head shadow — partial sound externalization
-  Phi layer      φ=1.618 ratio 3rd binaural — minimal cognitive friction
-  Phase lock     infra envelope drives beat frequency (breath = master clock)
-  Schumann stack all 5 Earth resonances (7.83+14.3+20.8+27.3+33.8 Hz) simultaneous
-  Pattern breaks 20s neutral resets between major blocks — anti-lock
-  Equal-power XF √taper crossfades — zero loudness dip at transitions
+GENESIS — Psychoacoustic Engineering Suite
+Author: franklin-sys | https://franklin-sys.vercel.app/
+pip install numpy scipy soundfile
 """
 
-import os
-import sys
-import argparse
-import textwrap
+import os, sys, time, threading
 
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
+AUTHOR  = 'franklin-sys'
+URL     = 'https://franklin-sys.vercel.app/'
 
-AUTHOR = 'franklin-sys'
-URL    = 'https://franklin-sys.vercel.app/'
+# ── Windows: enable ANSI + arrow keys
+if sys.platform == 'win32':
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 7)
+    kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 
-ALL_PROFILES = ['GENESIS', 'WALK', 'SLEEP', 'HEALER', 'ORACLE', 'WARRIOR']
+# ══════════════════════════════════════════
+#  ANSI
+# ══════════════════════════════════════════
 
-PROTOCOL = {
-    'GENESIS': [
-        "Проводные наушники обязательно (BT разрушает ITD-фазу)",
-        "Громкость: 20–28% — плотный микс, тише = лучше",
-        "Не засыпать первые 5 мин (gamma ignition активен)",
-        "Не чаще 1 раза в 2 дня",
-        "10 мин тишины без экранов после — интеграция",
-    ],
-    'WALK': [
-        "Проводные наушники (HRTF+ITD требует фазовой точности)",
-        "Можно слушать в движении — специально под прогулку",
-        "Громкость: 25–35%",
-        "Не садиться за руль",
-    ],
-    'SLEEP': [
-        "Лежать, глаза закрыты с первой секунды",
-        "Засыпать можно — архитектура учитывает это",
-        "Окна осознания: ~40, 65, 88 мин — не пугаться резкого возврата",
-        "Проводные наушники или подушка-динамик",
-    ],
-    'HEALER': [
-        "Можно полностью засыпать",
-        "528 Hz — мягкий тембр, не требует усилий",
-        "Громкость: 15–25%",
-        "Идеально: ночной цикл или дневной сон",
-    ],
-    'ORACLE': [
-        "Лежать, глаза закрыты",
-        "Не пытаться 'видеть' — позволить образам приходить самим",
-        "Громкость: 20–28%",
-        "Chaos-блок (~22 мин) — самый интенсивный, не двигаться",
-    ],
-    'WARRIOR': [
-        "Можно сидеть или стоять",
-        "Громкость: 25–35%",
-        "Не использовать для сна — выраженная активация",
-        "Хорошо перед важной задачей / тренировкой",
-    ],
-}
+ESC   = '\033['
+RESET = '\033[0m'
+
+def C(r,g,b,bg=False): return f'\033[{"48" if bg else "38"};2;{r};{g};{b}m'
+def BOLD():   return '\033[1m'
+def DIM():    return '\033[2m'
+def CLEAR():  return '\033[2J\033[H'
+def HIDE():   return '\033[?25l'
+def SHOW():   return '\033[?25h'
+def MOVE(r,c):return f'\033[{r};{c}H'
+def CLRL():   return '\033[2K'
+
+# Palette
+GOLD   = C(255,200, 50)
+CYAN   = C( 80,220,255)
+TEAL   = C( 50,190,160)
+GREY   = C(140,140,160)
+WHITE  = C(230,230,245)
+DIM_W  = C(100,100,115)
+PURPLE = C(160,100,255)
+RED    = C(255, 80, 80)
+GREEN  = C( 80,220,120)
+BG_SEL = C( 25, 35, 55, bg=True)
+BG_DIM = C( 12, 15, 22, bg=True)
+
+# ══════════════════════════════════════════
+#  KEY READER (cross-platform)
+# ══════════════════════════════════════════
+
+def _getch():
+    if sys.platform == 'win32':
+        import msvcrt
+        ch = msvcrt.getwch()
+        if ch in ('\x00', '\xe0'):       # special key prefix
+            ch2 = msvcrt.getwch()
+            return {'H': 'UP', 'P': 'DOWN', 'M': 'RIGHT', 'K': 'LEFT'}.get(ch2, '')
+        return ch
+    else:
+        import tty, termios
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+            if ch == '\x1b':
+                ch2 = sys.stdin.read(1)
+                ch3 = sys.stdin.read(1)
+                return {'A':'UP','B':'DOWN','C':'RIGHT','D':'LEFT'}.get(ch3, '')
+            return ch
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+# ══════════════════════════════════════════
+#  PROFILE DEFINITIONS (label, time, desc, protocol)
+# ══════════════════════════════════════════
+
+PROFILES = [
+    {
+        'key':   'GENESIS',
+        'title': 'GENESIS',
+        'time':  '63 мин',
+        'glyph': '◈',
+        'color': GOLD,
+        'short': 'Полный спектр — флагманская сессия',
+        'desc': [
+            'Gamma ignition → Schumann → Theta → Void → Integration',
+            'Все слои активны: HRTF · CFC · Lorenz · ASSR-80 · Phi',
+            'Carrier cascade: 200→432→528→639→432→200 Hz',
+        ],
+        'protocol': [
+            'Проводные наушники — BT разрушает ITD-фазу',
+            'Громкость 20–28%  ·  не засыпать первые 5 мин',
+            'Не чаще 1 раза в 2 дня  ·  10 мин тишины после',
+        ],
+    },
+    {
+        'key':   'WALK',
+        'title': 'ПРОГУЛКА',
+        'time':  '30 мин',
+        'glyph': '◉',
+        'color': TEAL,
+        'short': 'Расширенное восприятие в движении',
+        'desc': [
+            'Alpha→Theta (12→7.5 Hz) · оператор-режим без транса',
+            'HRTF + ITD-ротация → широкополосное пространство',
+            'Gamma-якорь держит ясность всю сессию',
+        ],
+        'protocol': [
+            'Проводные наушники — можно в движении',
+            'Громкость 25–35%  ·  не садиться за руль',
+        ],
+    },
+    {
+        'key':   'SLEEP',
+        'title': 'СОН / ВЫХОД',
+        'time':  '90 мин',
+        'glyph': '◌',
+        'color': PURPLE,
+        'short': 'Глубокий сон + 3 окна осознания (OBE)',
+        'desc': [
+            'Descent → Deep delta → 3× gamma-spike trigger cycles',
+            'Окна осознания: ~40, 65, 88 мин — OBE-архитектура',
+            'HRTF + Lorenz chaos в триггерных блоках',
+        ],
+        'protocol': [
+            'Лечь, глаза закрыты с первой секунды',
+            'Засыпать можно — сессия это учитывает',
+            'Резкий возврат в окнах — норма, не пугаться',
+        ],
+    },
+    {
+        'key':   'HEALER',
+        'title': 'ИСЦЕЛЕНИЕ',
+        'time':  '75 мин',
+        'glyph': '◎',
+        'color': GREEN,
+        'short': 'Глубокая дельта · восстановление · 528 Hz',
+        'desc': [
+            '528 Hz Solfeggio MI carrier на всей сессии',
+            'Phi (φ=1.618) geometry layers · delta 1.5 Hz hold',
+            'Двойной void-блок · максимальный CFC strength',
+        ],
+        'protocol': [
+            'Можно полностью засыпать',
+            'Громкость 15–25%  ·  идеально для ночного цикла',
+        ],
+    },
+    {
+        'key':   'ORACLE',
+        'title': 'ОРАКУЛ',
+        'time':  '60 мин',
+        'glyph': '◐',
+        'color': CYAN,
+        'short': 'Ясновидение · Шуман · тета-коридор',
+        'desc': [
+            '432 Hz · все 5 резонансов Шумана одновременно',
+            'Lorenz chaos в theta-2 → деактивация DMN',
+            'Phase lock: дыхание = master clock всей сессии',
+        ],
+        'protocol': [
+            'Лечь, глаза закрыты · не пытаться "видеть"',
+            'Громкость 20–28%  ·  chaos-блок ~22 мин — не двигаться',
+        ],
+    },
+    {
+        'key':   'WARRIOR',
+        'title': 'ВОИН',
+        'time':  '50 мин',
+        'glyph': '◆',
+        'color': RED,
+        'short': 'Beta/Gamma пик · полная активация',
+        'desc': [
+            'Gamma (30–40 Hz) dominant · ASSR-80 на максимуме',
+            'HRTF + ITD + Lorenz chaos с первого блока',
+            'Минимальная дельта · фокус на beta-lock финале',
+        ],
+        'protocol': [
+            'Можно сидеть или стоять · не для сна',
+            'Громкость 25–35%  ·  хорошо перед тренировкой/задачей',
+        ],
+    },
+]
+
+# ══════════════════════════════════════════
+#  LAYOUT HELPERS
+# ══════════════════════════════════════════
+
+W = 72   # total width
+
+def hr(char='─', col=DIM_W):
+    return f'{col}{char * W}{RESET}'
+
+def center(text, width=W):
+    # strip ANSI for length calc
+    import re
+    clean = re.sub(r'\033\[[^m]*m', '', text)
+    pad = max(0, (width - len(clean)) // 2)
+    return ' ' * pad + text
+
+def pad_right(text, width):
+    import re
+    clean = re.sub(r'\033\[[^m]*m', '', text)
+    return text + ' ' * max(0, width - len(clean))
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='GENESIS — Psychoacoustic Engineering Suite',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent("""
-        Profiles:
-          GENESIS   full-spectrum flagship: ignition→void→integration (63 min)
-          WALK      alpha/theta expansion in motion, operator mode (30 min)
-          SLEEP     deep delta + 3x OBE-window cycles (90 min)
-          HEALER    delta restoration, 528 Hz, phi-geometry (75 min)
-          ORACLE    Schumann/theta, clairvoyance corridor (60 min)
-          WARRIOR   beta/gamma peak activation, chaos+HRTF (50 min)
-        """)
-    )
-    parser.add_argument('--profile', default='GENESIS',
-                        choices=ALL_PROFILES,
-                        help='Session profile (default: GENESIS)')
-    parser.add_argument('--map', action='store_true',
-                        help='Print session map only, no render')
-    parser.add_argument('--all', action='store_true',
-                        help='Render all profiles sequentially')
-    args = parser.parse_args()
+# ══════════════════════════════════════════
+#  SCREENS
+# ══════════════════════════════════════════
 
-    # Deferred import — only after args parsed (faster --help)
+LOGO = f"""
+{GOLD}{BOLD()}  ██████╗ ███████╗███╗  ██╗███████╗███████╗██╗███████╗{RESET}
+{GOLD}{BOLD()}  ██╔════╝██╔════╝████╗ ██║██╔════╝██╔════╝██║██╔════╝{RESET}
+{GOLD}{BOLD()}  ██║ ███╗█████╗  ██╔██╗██║█████╗  ███████╗██║███████╗{RESET}
+{GOLD}{BOLD()}  ██║  ██║██╔══╝  ██║╚████║██╔══╝  ╚════██║██║╚════██║{RESET}
+{GOLD}{BOLD()}  ╚██████╔╝███████╗██║ ╚███║███████╗███████║██║███████║{RESET}
+{GOLD}{BOLD()}   ╚═════╝ ╚══════╝╚═╝  ╚══╝╚══════╝╚══════╝╚═╝╚══════╝{RESET}"""
+
+def draw_header():
+    print(LOGO)
+    print(center(f'{DIM_W}Psychoacoustic Engineering Suite  ·  {AUTHOR}{RESET}'))
+    print(center(f'{DIM_W}{URL}{RESET}'))
+    print()
+    print(hr())
+    print()
+
+
+def draw_menu(sel: int, show_detail: bool = False):
+    sys.stdout.write(CLEAR() + HIDE())
+
+    draw_header()
+
+    print(f'{GREY}  Выбери профиль сессии:{RESET}')
+    print(f'{DIM_W}  ↑ ↓  навигация    Enter  запуск    M  карта    Q  выход{RESET}')
+    print()
+
+    for i, p in enumerate(PROFILES):
+        active = (i == sel)
+        bg     = BG_SEL if active else BG_DIM
+        col    = p['color']
+        arrow  = f'{col}▶{RESET}' if active else ' '
+        glyph  = f'{col}{BOLD()}{p["glyph"]}{RESET}'
+        title  = f'{col}{BOLD()}{p["title"]:<13}{RESET}'
+        t      = f'{DIM_W}{p["time"]:<8}{RESET}'
+        short  = f'{WHITE}{p["short"]}{RESET}' if active else f'{GREY}{p["short"]}{RESET}'
+
+        line = f'  {arrow} {glyph}  {title} {t}  {short}'
+        # pad to W
+        import re
+        clean = re.sub(r'\033\[[^m]*m', '', line)
+        line += ' ' * max(0, W - len(clean) + 2)
+
+        print(f'{bg}{line}{RESET}')
+
+        if active and show_detail:
+            print()
+            for d in p['desc']:
+                print(f'    {TEAL}·{RESET} {DIM_W}{d}{RESET}')
+            print()
+
+    print()
+
+    if show_detail:
+        p = PROFILES[sel]
+        print(hr('·'))
+        print(f'  {DIM_W}Протокол:{RESET}')
+        for line in p['protocol']:
+            print(f'  {GOLD}→{RESET} {GREY}{line}{RESET}')
+        print()
+
+    sys.stdout.flush()
+
+
+def draw_confirm(profile: dict) -> bool:
+    sys.stdout.write(CLEAR() + HIDE())
+    draw_header()
+
+    col = profile['color']
+    print(center(f'{col}{BOLD()}{profile["glyph"]}  {profile["title"]}  {profile["glyph"]}{RESET}'))
+    print(center(f'{WHITE}{profile["short"]}{RESET}'))
+    print()
+    print(hr())
+    print()
+    print(f'  {GREY}Длительность:{RESET} {WHITE}{profile["time"]}{RESET}')
+    print()
+    print(f'  {GREY}Описание:{RESET}')
+    for d in profile['desc']:
+        print(f'    {TEAL}·{RESET} {DIM_W}{d}{RESET}')
+    print()
+    print(f'  {GREY}Протокол:{RESET}')
+    for line in profile['protocol']:
+        print(f'    {GOLD}→{RESET} {GREY}{line}{RESET}')
+    print()
+    print(hr())
+    print()
+    print(f'  {WHITE}Начать рендер?  {GREEN}{BOLD()}[Enter] Да{RESET}  {RED}[Esc/Q] Назад{RESET}')
+    print()
+    sys.stdout.flush()
+
+    while True:
+        k = _getch()
+        if k in ('\r', '\n'):  return True
+        if k in ('q','Q','\x1b'): return False
+
+
+# ══════════════════════════════════════════
+#  PROGRESS RENDERER
+# ══════════════════════════════════════════
+
+_spin = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏']
+_tick = [0]
+
+
+def _spinner_thread(stop_evt):
+    while not stop_evt.is_set():
+        sys.stdout.write(f'\r  {GOLD}{_spin[_tick[0] % len(_spin)]}{RESET} ')
+        sys.stdout.flush()
+        _tick[0] += 1
+        time.sleep(0.08)
+
+
+def render_with_ui(profile: dict):
     from psychoacoustic.profiles  import build_profile
     from psychoacoustic.renderer  import render_session, export_map
 
-    targets = ALL_PROFILES if args.all else [args.profile.upper()]
+    blocks    = build_profile(profile['key'])
+    total_s   = sum(b.dur_s for b in blocks)
+    out_flac  = os.path.join(OUT_DIR, f"GENESIS_{profile['key']}_{int(total_s//60)}min.flac")
+    out_map   = out_flac.replace('.flac', '_MAP.txt')
 
-    for profile in targets:
-        blocks    = build_profile(profile)
-        total_s   = sum(b.dur_s for b in blocks)
-        out_flac  = os.path.join(OUT_DIR, f"GENESIS_{profile}_{int(total_s//60)}min.flac")
-        out_map   = out_flac.replace('.flac', '_MAP.txt')
+    col = profile['color']
 
-        export_map(blocks, profile, out_map)
+    sys.stdout.write(CLEAR() + SHOW())
+    draw_header()
 
-        if args.map and not args.all:
-            print(open(out_map, encoding='utf-8').read())
-            return
+    print(center(f'{col}{BOLD()}{profile["glyph"]}  {profile["title"]}  ·  {profile["time"]}{RESET}'))
+    print()
+    print(hr())
+    print()
 
-        print("═" * 64)
-        print(f"  GENESIS — {profile}")
-        print(f"  SR: 44100 Hz | FLAC PCM-24 | Stereo")
-        render_session(blocks, out_flac,
-                       author=AUTHOR, url=URL,
-                       fade_s=8.0, break_min_dur=600.0)
-        print()
-        print("  PROTOCOL:")
-        for line in PROTOCOL.get(profile, []):
-            print(f"  — {line}")
-        print("═" * 64)
-        print()
+    # Export map silently
+    export_map(blocks, profile['key'], out_map)
+
+    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= 600}
+    BREAK_AFTER.add(0)
+    total_core   = sum(b.dur_s for b in blocks)
+    total_breaks = len(BREAK_AFTER) * 20
+    total_render = total_core + total_breaks
+
+    n_blocks = len(blocks)
+    bar_w    = 40
+
+    print(f'  {GREY}Блоков:{RESET} {WHITE}{n_blocks}{RESET}   '
+          f'{GREY}Длительность:{RESET} {WHITE}{total_render/60:.1f} мин{RESET}')
+    print(f'  {GREY}Файл:{RESET}  {DIM_W}{os.path.basename(out_flac)}{RESET}')
+    print()
+
+    # ── Patch renderer to report per-block progress ──
+    import numpy as np
+    import soundfile as sf
+    from psychoacoustic.core import SR, crossfade_write
+    from psychoacoustic.dsp  import pattern_break
+
+    def _render_patched():
+        prev_tail  = None
+        t_start    = time.time()
+
+        with sf.SoundFile(out_flac, 'w', samplerate=SR,
+                          channels=2, format='FLAC', subtype='PCM_24') as fh:
+            try:
+                fh.artist    = AUTHOR
+                fh.date      = '2026'
+                fh.copyright = f'{AUTHOR} (2026) | {URL}'
+                fh.license   = URL
+            except Exception:
+                pass
+
+            for i, block in enumerate(blocks):
+                # ── Draw block progress
+                done_s = sum(b.dur_s for b in blocks[:i])
+                pct    = done_s / total_core * 100
+                filled = int(pct / 100 * bar_w)
+                bar    = (f'{col}{"█" * filled}{RESET}'
+                          f'{DIM_W}{"░" * (bar_w - filled)}{RESET}')
+
+                elapsed = time.time() - t_start
+                eta_str = ''
+                if pct > 3:
+                    eta = elapsed / pct * (100 - pct)
+                    eta_str = f'  {DIM_W}ETA {int(eta//60):02d}:{int(eta%60):02d}{RESET}'
+
+                sys.stdout.write(
+                    f'\r  [{bar}] {col}{pct:4.0f}%{RESET}'
+                    f'  {WHITE}{block.label[:32]:<32}{RESET}{eta_str}   '
+                )
+                sys.stdout.flush()
+
+                L, R = block.render()
+
+                if i == 0:
+                    fn   = int(5 * SR)
+                    ramp = np.linspace(0, 1, fn, np.float32)
+                    L[:fn] *= ramp; R[:fn] *= ramp
+
+                prev_tail = crossfade_write(fh, prev_tail, L, R, fade_s=8.0)
+                del L, R
+
+                if i in BREAK_AFTER:
+                    bL, bR = pattern_break(carrier=float(block.c1))
+                    prev_tail = crossfade_write(fh, prev_tail, bL, bR, fade_s=3.0)
+                    del bL, bR
+
+            if prev_tail and prev_tail[0] is not None and len(prev_tail[0]):
+                tL, tR = prev_tail
+                fn   = min(int(6*SR), len(tL))
+                ramp = np.linspace(1, 0, fn, np.float32)
+                tL[-fn:] *= ramp; tR[-fn:] *= ramp
+                fh.write(np.stack([tL, tR], axis=1))
+
+        return time.time() - t_start
+
+    elapsed = _render_patched()
+    size_mb = os.path.getsize(out_flac) / 1024 / 1024
+
+    # Final bar
+    bar_full = f'{col}{"█" * bar_w}{RESET}'
+    sys.stdout.write(f'\r  [{bar_full}] {col}100%{RESET}' + ' ' * 50 + '\n')
+    sys.stdout.flush()
+
+    print()
+    print(hr())
+    print()
+    print(f'  {GREEN}{BOLD()}✓  Готово{RESET}')
+    print()
+    print(f'  {GREY}Файл:{RESET}    {WHITE}{out_flac}{RESET}')
+    print(f'  {GREY}Размер:{RESET}  {WHITE}{size_mb:.1f} MB{RESET}   '
+          f'{GREY}Время рендера:{RESET} {WHITE}{int(elapsed//60):02d}:{int(elapsed%60):02d}{RESET}')
+    print()
+    print(f'  {GREY}Карта сессии:{RESET}  {DIM_W}{out_map}{RESET}')
+    print()
+    print(hr())
+    print()
+    print(f'  {GREY}Протокол:{RESET}')
+    for line in profile['protocol']:
+        print(f'  {GOLD}→{RESET} {GREY}{line}{RESET}')
+    print()
+    print(f'  {DIM_W}Нажми любую клавишу...{RESET}')
+    sys.stdout.flush()
+    _getch()
+
+
+def show_map(profile: dict):
+    from psychoacoustic.profiles import build_profile
+    from psychoacoustic.renderer import export_map
+    import tempfile
+
+    blocks   = build_profile(profile['key'])
+    total_s  = sum(b.dur_s for b in blocks)
+    tmp_path = os.path.join(OUT_DIR,
+                 f"GENESIS_{profile['key']}_{int(total_s//60)}min_MAP.txt")
+    export_map(blocks, profile['key'], tmp_path)
+
+    sys.stdout.write(CLEAR() + SHOW())
+    draw_header()
+    print(f'{GOLD}  Карта: {profile["title"]}{RESET}')
+    print()
+    with open(tmp_path, encoding='utf-8') as f:
+        for line in f:
+            print(f'  {DIM_W}{line.rstrip()}{RESET}')
+    print()
+    print(f'  {DIM_W}Нажми любую клавишу...{RESET}')
+    sys.stdout.flush()
+    _getch()
+
+
+# ══════════════════════════════════════════
+#  MAIN LOOP
+# ══════════════════════════════════════════
+
+def main():
+    sel        = 0
+    show_detail= False
+
+    while True:
+        draw_menu(sel, show_detail)
+        k = _getch()
+
+        if k == 'UP':
+            sel = (sel - 1) % len(PROFILES)
+            show_detail = False
+
+        elif k == 'DOWN':
+            sel = (sel + 1) % len(PROFILES)
+            show_detail = False
+
+        elif k in ('\r', '\n'):
+            # confirm screen
+            if draw_confirm(PROFILES[sel]):
+                try:
+                    render_with_ui(PROFILES[sel])
+                except KeyboardInterrupt:
+                    sys.stdout.write(SHOW())
+                    sys.stdout.write(CLEAR())
+                    print(f'\n  {RED}Прервано.{RESET}\n')
+                    sys.exit(0)
+            show_detail = False
+
+        elif k in ('m', 'M'):
+            show_map(PROFILES[sel])
+            show_detail = False
+
+        elif k in (' ',):
+            show_detail = not show_detail
+
+        elif k in ('q', 'Q', '\x03'):
+            sys.stdout.write(SHOW() + CLEAR())
+            print(f'\n  {GOLD}GENESIS{RESET} {GREY}— до следующей сессии.{RESET}\n')
+            sys.exit(0)
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.stdout.write(SHOW())
+        print()
+        sys.exit(0)
