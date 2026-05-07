@@ -3,68 +3,128 @@ import soundfile as sf
 import os, sys
 from typing import List
 from .block import Block
-from .core import SR, crossfade_write
-from .dsp import pattern_break
+from .core  import SR, crossfade_write
+from .dsp   import pattern_break
 
 
-def export_map(blocks: List[Block], profile: str, out_path: str):
+# ══════════════════════════════════════════════════════════
+#  CUE SHEET EXPORT
+#  Стандартный .cue формат — плееры (foobar, VLC, mpv)
+#  показывают название текущей фазы прямо на экране.
+# ══════════════════════════════════════════════════════════
+
+def _sec_to_cue(seconds: float) -> str:
+    """Конвертирует секунды в формат CUE MM:SS:FF (75 frames/sec)."""
+    total_frames = int(round(seconds * 75))
+    ff  = total_frames % 75
+    ss  = (total_frames // 75) % 60
+    mm  = total_frames // 75 // 60
+    return f"{mm:02d}:{ss:02d}:{ff:02d}"
+
+
+def export_cue(blocks: List[Block], out_path: str, flac_filename: str,
+               artist: str = 'franklin-sys',
+               break_min_dur: float = 600.0):
+    """
+    Генерирует .cue файл с треком для каждого блока.
+    Учитывает pattern-break паузы (20 сек) при расчёте таймингов.
+    """
+    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
+    BREAK_AFTER.add(0)
+
     lines = [
-        "═" * 72,
-        f"  GENESIS — SESSION MAP  |  Profile: {profile}",
-        "═" * 72, ""
+        f'PERFORMER "{artist}"',
+        f'FILE "{flac_filename}" FLAC',
     ]
+
+    t      = 0.0
+    track  = 1
+    for i, b in enumerate(blocks):
+        lines.append(f'  TRACK {track:02d} AUDIO')
+        lines.append(f'    TITLE "{b.label}"')
+        lines.append(f'    PERFORMER "{artist}"')
+        lines.append(f'    INDEX 01 {_sec_to_cue(t)}')
+        track += 1
+        t += b.dur_s
+        if i in BREAK_AFTER:
+            t += 20.0   # pattern break
+
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
+    print(f"  Cue  → {out_path}")
+
+
+# ══════════════════════════════════════════════════════════
+#  SESSION MAP (text)
+# ══════════════════════════════════════════════════════════
+
+def export_map(blocks: List[Block], profile: str, out_path: str,
+               break_min_dur: float = 600.0):
+    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
+    BREAK_AFTER.add(0)
+
+    lines = ["═"*72,
+             f"  GENESIS — SESSION MAP  |  Profile: {profile}", "═"*72, ""]
     t = 0.0
     for i, b in enumerate(blocks):
         end = t + b.dur_s
         lines.append(f"  [{i+1:02d}]  {b.label}")
         lines.append(f"        {t/60:.2f} → {end/60:.2f} min")
-        lines.append(f"        Carrier {b.c0}→{b.c1} Hz   Beat {b.b0}→{b.b1} Hz (log)")
-        lines.append(f"        Noise  pink={b.noise_pw:.1f} brown={b.noise_bw:.1f} (SR-cal)")
-        for (fv, cv, vv, atk, dec) in b.iso_layers:
-            lines.append(f"        ISO    {fv} Hz  carr={cv}  vol={vv}  atk={atk}s dec={dec}s")
-        if b.cfc_theta:    lines.append(f"        CFC    θ={b.cfc_theta} Hz → γ  str={b.cfc_strength}")
-        if b.assr_80hz_vol: lines.append(f"        ASSR-80  vol={b.assr_80hz_vol}")
-        if b.itd_period:   lines.append(f"        ITD-rot  period={b.itd_period}s")
-        if b.infra_freq:   lines.append(f"        Infra    {b.infra_freq} Hz  depth={b.infra_depth}")
-        if b.schumann_mode: lines.append(f"        MODE     Schumann stack (7.83+14.3+20.8+27.3+33.8 Hz)")
-        if b.use_chaos:    lines.append(f"        CHAOS    Lorenz beat  depth={b.chaos_depth}")
-        if b.use_hrtf:     lines.append(f"        HRTF     pinna externalization")
-        if b.use_phi:      lines.append(f"        PHI      φ-ratio 3rd binaural layer")
-        if b.phase_lock:   lines.append(f"        LOCK     infra→beat phase coupling  depth={b.phase_lock_depth}")
+        lines.append(f"        Carrier {b.c0}→{b.c1} Hz   Beat {b.b0}→{b.b1} Hz")
+        lines.append(f"        Timbre: {b.carrier_type}   "
+                     f"Noise pink={b.noise_pw:.1f} brown={b.noise_bw:.1f}")
+        for (fv,cv,vv,atk,dec) in b.iso_layers:
+            lines.append(f"        ISO {fv} Hz  carr={cv}  vol={vv}")
+        flags = []
+        if b.cfc_theta:    flags.append(f"CFC θ={b.cfc_theta}Hz str={b.cfc_strength}")
+        if b.assr_80hz_vol: flags.append(f"ASSR-80 vol={b.assr_80hz_vol}")
+        if b.use_chaos:    flags.append(f"Lorenz depth={b.chaos_depth}")
+        if b.use_hrtf:     flags.append(f"HRTF az={b.hrtf_az_sweep}s el={b.hrtf_elevation}°")
+        if b.spatial_3d:   flags.append(f"3D-orbit az={b.itd_period}s el={b.el_period}s")
+        elif b.itd_period: flags.append(f"ITD-2D period={b.itd_period}s")
+        if b.infra_freq:   flags.append(f"Infra {b.infra_freq}Hz d={b.infra_depth}")
+        if b.use_drone:    flags.append(f"Drone vol={b.drone_vol} det={b.drone_detune}Hz")
+        if b.use_wind:     flags.append(f"Wind vol={b.wind_vol} bw={b.wind_bw}Hz")
+        if b.use_lfo_filter: flags.append(f"LFO-filt fc={b.lfo_fc}Hz")
+        if b.schumann_mode: flags.append("Schumann-stack")
+        if b.use_phi:      flags.append("φ-layer")
+        if b.phase_lock:   flags.append(f"PhLock d={b.phase_lock_depth}")
+        if flags:
+            lines.append("        " + "  ·  ".join(flags))
         lines.append("")
         t = end
+        if i in BREAK_AFTER:
+            t += 20.0
 
-    lines += [
-        "═" * 72,
-        "  LAYER LEGEND",
-        "  Binaural    phase-accurate dual-octave pair + beat/carrier jitter",
-        "  Isochronic  hard-gated AM > cortical evoked response",
-        "  CFC         theta→gamma PAC (hippocampal working memory coupling)",
-        "  ASSR-80     80 Hz brainstem pathway, independent of 40 Hz cortical",
-        "  ITD-rot     inter-aural rotation, vestibular + spatial circuits",
-        "  Infra       ultra-slow AM, ANS + respiratory entrainment",
-        "  SR noise    stochastic-resonance calibrated to 15% signal RMS",
-        "  Lorenz      deterministic chaos beat modulation, DMN deactivation",
-        "  HRTF        pinna reflection + head shadow, partial externalization",
-        "  PHI         φ=1.618 ratio 3rd binaural layer, minimal cog. friction",
-        "  PhLock      infra envelope drives beat frequency (breath=master clock)",
-        "═" * 72,
-    ]
+    lines += ["═"*72,
+              "  LAYER LEGEND",
+              "  carrier:  sine|warm(FM)|rich(5harm)|soft|organ",
+              "  drone:    detuned 3-voice pad с LFO-детюнингом",
+              "  wind:     розовый шум → узкополосный BP @ carrier freq",
+              "  lfo-filt: медленный LP-sweep → живое дыхание сигнала",
+              "  CFC:      theta→gamma PAC (hippocampal coupling)",
+              "  ASSR-80:  brainstem 80Hz pathway",
+              "  Lorenz:   детерминированный хаос, t-scale фиксирован",
+              "  HRTF:     Brown-Duda spherical head model (Woodworth ITD)",
+              "  3D-orbit: azimuth circle + elevation Lissajous",
+              "  Infra:    ultra-slow AM → ANS sync",
+              "  SR noise: stochastic-resonance optimal (15% signal RMS)",
+              "═"*72]
+
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
-    print(f"  Map → {out_path}")
+    print(f"  Map  → {out_path}")
 
+
+# ══════════════════════════════════════════════════════════
+#  RENDER ENGINE
+# ══════════════════════════════════════════════════════════
 
 def render_session(blocks: List[Block], out_flac: str,
-                   author: str = 'franklin-sys',
-                   url: str = 'https://franklin-sys.vercel.app/',
-                   fade_s: float = 8.0,
+                   author:        str   = 'franklin-sys',
+                   url:           str   = 'https://franklin-sys.vercel.app/',
+                   fade_s:        float = 8.0,
                    break_min_dur: float = 600.0):
-    """
-    Render blocks to FLAC PCM-24.
-    Inserts 20s pattern-break after: first block + any block ≥ break_min_dur.
-    Uses equal-power crossfades throughout.
-    """
     BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
     BREAK_AFTER.add(0)
 
@@ -72,33 +132,40 @@ def render_session(blocks: List[Block], out_flac: str,
     total_breaks = len(BREAK_AFTER) * 20
     total_s      = total_core + total_breaks
 
-    print(f"  {len(blocks)} blocks | {len(BREAK_AFTER)} breaks | {total_s/60:.1f} min total")
+    # CUE sheet рядом с FLAC
+    cue_path = out_flac.replace('.flac', '.cue')
+    export_cue(blocks, cue_path,
+               flac_filename=os.path.basename(out_flac),
+               artist=author,
+               break_min_dur=break_min_dur)
+
+    print(f"  {len(blocks)} blocks | {len(BREAK_AFTER)} breaks "
+          f"| {total_s/60:.1f} min total")
     print(f"  → {out_flac}")
 
     with sf.SoundFile(out_flac, 'w', samplerate=SR,
                       channels=2, format='FLAC', subtype='PCM_24') as fh:
-        # Metadata
         try:
             fh.artist    = author
             fh.date      = '2026'
             fh.copyright = f'{author} (2026) | {url}'
             fh.license   = url
         except Exception:
-            pass  # SoundFile metadata not always writable
+            pass
 
         prev_tail = None
-
         for i, block in enumerate(blocks):
             done = sum(b.dur_s for b in blocks[:i])
             pct  = done / total_core * 100
             bar  = '█' * int(pct/5) + '░' * (20 - int(pct/5))
-            sys.stdout.write(f"\r  [{bar}] {pct:4.0f}%  {block.label[:36]:<36s}")
+            sys.stdout.write(
+                f"\r  [{bar}] {pct:4.0f}%  {block.label[:36]:<36s}")
             sys.stdout.flush()
 
             L, R = block.render()
 
             if i == 0:
-                fn = int(5 * SR)
+                fn   = int(5 * SR)
                 ramp = np.linspace(0, 1, fn, np.float32)
                 L[:fn] *= ramp; R[:fn] *= ramp
 
@@ -106,17 +173,19 @@ def render_session(blocks: List[Block], out_flac: str,
             del L, R
 
             if i in BREAK_AFTER:
-                bL, bR = pattern_break(carrier=float(block.c1))
+                bL, bR = pattern_break(carrier=float(block.c1),
+                                       carrier_type=block.carrier_type)
                 prev_tail = crossfade_write(fh, prev_tail, bL, bR, fade_s=3.0)
                 del bL, bR
 
         if prev_tail and prev_tail[0] is not None and len(prev_tail[0]):
             tL, tR = prev_tail
-            fn = min(int(6*SR), len(tL))
+            fn   = min(int(6*SR), len(tL))
             ramp = np.linspace(1, 0, fn, np.float32)
             tL[-fn:] *= ramp; tR[-fn:] *= ramp
             fh.write(np.stack([tL, tR], axis=1))
 
     size_mb = os.path.getsize(out_flac) / 1024 / 1024
-    print(f"\r  {'█'*20}  100%  {total_s/60:.1f} min | {size_mb:.1f} MB{' '*20}")
+    print(f"\r  {'█'*20}  100%  "
+          f"{total_s/60:.1f} min | {size_mb:.1f} MB{' '*25}")
     return out_flac
