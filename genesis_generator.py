@@ -5,7 +5,7 @@ Author: franklin-sys | https://franklin-sys.vercel.app/
 pip install numpy scipy soundfile
 """
 
-import os, sys, time, threading
+import os, sys, re, time, threading
 
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 AUTHOR  = 'franklin-sys'
@@ -47,35 +47,47 @@ GREEN  = C( 80,220,120)
 BG_SEL = C( 25, 35, 55, bg=True)
 BG_DIM = C( 12, 15, 22, bg=True)
 
+# ── ANSI strip regex — один экземпляр на модуль (не импортировать re в каждой функции)
+_ANSI_RE = re.compile(r'\033\[[^m]*m')
+
+
 # ══════════════════════════════════════════
 #  KEY READER (cross-platform)
+#  FIX: Unix ESC без продолжения больше не блокирует:
+#       select() с timeout 50 мс проверяет наличие следующего байта.
 # ══════════════════════════════════════════
 
 def _getch():
     if sys.platform == 'win32':
         import msvcrt
         ch = msvcrt.getwch()
-        if ch in ('\x00', '\xe0'):       # special key prefix
+        if ch in ('\x00', '\xe0'):
             ch2 = msvcrt.getwch()
             return {'H': 'UP', 'P': 'DOWN', 'M': 'RIGHT', 'K': 'LEFT'}.get(ch2, '')
         return ch
     else:
-        import tty, termios
-        fd = sys.stdin.fileno()
+        import tty, termios, select as _select
+        fd  = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         try:
             tty.setraw(fd)
             ch = sys.stdin.read(1)
             if ch == '\x1b':
-                ch2 = sys.stdin.read(1)
-                ch3 = sys.stdin.read(1)
-                return {'A':'UP','B':'DOWN','C':'RIGHT','D':'LEFT'}.get(ch3, '')
+                # Проверяем следующий байт с timeout 50 мс
+                if _select.select([sys.stdin], [], [], 0.05)[0]:
+                    ch2 = sys.stdin.read(1)
+                    if _select.select([sys.stdin], [], [], 0.05)[0]:
+                        ch3 = sys.stdin.read(1)
+                        return {'A': 'UP', 'B': 'DOWN',
+                                'C': 'RIGHT', 'D': 'LEFT'}.get(ch3, 'ESC')
+                return 'ESC'
             return ch
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
+
 # ══════════════════════════════════════════
-#  PROFILE DEFINITIONS (label, time, desc, protocol)
+#  PROFILE DEFINITIONS
 # ══════════════════════════════════════════
 
 PROFILES = [
@@ -185,6 +197,7 @@ PROFILES = [
     },
 ]
 
+
 # ══════════════════════════════════════════
 #  LAYOUT HELPERS
 # ══════════════════════════════════════════
@@ -195,16 +208,11 @@ def hr(char='─', col=DIM_W):
     return f'{col}{char * W}{RESET}'
 
 def center(text, width=W):
-    # strip ANSI for length calc
-    import re
-    clean = re.sub(r'\033\[[^m]*m', '', text)
-    pad = max(0, (width - len(clean)) // 2)
+    pad = max(0, (width - len(_ANSI_RE.sub('', text))) // 2)
     return ' ' * pad + text
 
 def pad_right(text, width):
-    import re
-    clean = re.sub(r'\033\[[^m]*m', '', text)
-    return text + ' ' * max(0, width - len(clean))
+    return text + ' ' * max(0, width - len(_ANSI_RE.sub('', text)))
 
 
 # ══════════════════════════════════════════
@@ -230,7 +238,6 @@ def draw_header():
 
 def draw_menu(sel: int, show_detail: bool = False):
     sys.stdout.write(CLEAR() + HIDE())
-
     draw_header()
 
     print(f'{GREY}  Выбери профиль сессии:{RESET}')
@@ -248,11 +255,7 @@ def draw_menu(sel: int, show_detail: bool = False):
         short  = f'{WHITE}{p["short"]}{RESET}' if active else f'{GREY}{p["short"]}{RESET}'
 
         line = f'  {arrow} {glyph}  {title} {t}  {short}'
-        # pad to W
-        import re
-        clean = re.sub(r'\033\[[^m]*m', '', line)
-        line += ' ' * max(0, W - len(clean) + 2)
-
+        line += ' ' * max(0, W - len(_ANSI_RE.sub('', line)) + 2)
         print(f'{bg}{line}{RESET}')
 
         if active and show_detail:
@@ -302,36 +305,37 @@ def draw_confirm(profile: dict) -> bool:
 
     while True:
         k = _getch()
-        if k in ('\r', '\n'):  return True
-        if k in ('q','Q','\x1b'): return False
+        if k in ('\r', '\n'):        return True
+        if k in ('q', 'Q', '\x1b', 'ESC'): return False
 
 
 # ══════════════════════════════════════════
 #  PROGRESS RENDERER
+#  FIX: _render_patched() удалён.
+#       Вместо дублирования render_session() используется
+#       progress_cb — callback передаётся в renderer.render_session().
 # ══════════════════════════════════════════
 
 _spin = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏']
 _tick = [0]
 
 
-def _spinner_thread(stop_evt):
-    while not stop_evt.is_set():
-        sys.stdout.write(f'\r  {GOLD}{_spin[_tick[0] % len(_spin)]}{RESET} ')
-        sys.stdout.flush()
-        _tick[0] += 1
-        time.sleep(0.08)
-
-
 def render_with_ui(profile: dict):
-    from psychoacoustic.profiles  import build_profile
-    from psychoacoustic.renderer  import render_session, export_map
+    from psychoacoustic.profiles import build_profile
+    from psychoacoustic.renderer import render_session, export_map
 
-    blocks    = build_profile(profile['key'])
-    total_s   = sum(b.dur_s for b in blocks)
-    out_flac  = os.path.join(OUT_DIR, f"GENESIS_{profile['key']}_{int(total_s//60)}min.flac")
-    out_map   = out_flac.replace('.flac', '_MAP.txt')
+    blocks   = build_profile(profile['key'])
+    total_s  = sum(b.dur_s for b in blocks)
+    out_flac = os.path.join(OUT_DIR, f"GENESIS_{profile['key']}_{int(total_s//60)}min.flac")
+    out_map  = out_flac.replace('.flac', '_MAP.txt')
+    col      = profile['color']
+    bar_w    = 40
 
-    col = profile['color']
+    BREAK_AFTER  = {i for i, b in enumerate(blocks) if b.dur_s >= 600}
+    BREAK_AFTER.add(0)
+    total_core   = sum(b.dur_s for b in blocks)
+    total_breaks = len(BREAK_AFTER) * 20
+    total_render = total_core + total_breaks
 
     sys.stdout.write(CLEAR() + SHOW())
     draw_header()
@@ -340,92 +344,39 @@ def render_with_ui(profile: dict):
     print()
     print(hr())
     print()
-
-    # Export map silently
     export_map(blocks, profile['key'], out_map)
 
-    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= 600}
-    BREAK_AFTER.add(0)
-    total_core   = sum(b.dur_s for b in blocks)
-    total_breaks = len(BREAK_AFTER) * 20
-    total_render = total_core + total_breaks
-
-    n_blocks = len(blocks)
-    bar_w    = 40
-
-    print(f'  {GREY}Блоков:{RESET} {WHITE}{n_blocks}{RESET}   '
+    print(f'  {GREY}Блоков:{RESET} {WHITE}{len(blocks)}{RESET}   '
           f'{GREY}Длительность:{RESET} {WHITE}{total_render/60:.1f} мин{RESET}')
     print(f'  {GREY}Файл:{RESET}  {DIM_W}{os.path.basename(out_flac)}{RESET}')
     print()
 
-    # ── Patch renderer to report per-block progress ──
-    import numpy as np
-    import soundfile as sf
-    from psychoacoustic.core import SR, crossfade_write
-    from psychoacoustic.dsp  import pattern_break
+    # ── Progress callback — вызывается из render_session перед каждым блоком
+    def _progress(idx: int, label: str, pct: float, elapsed: float):
+        filled  = int(pct / 100 * bar_w)
+        bar     = (f'{col}{"█" * filled}{RESET}'
+                   f'{DIM_W}{"░" * (bar_w - filled)}{RESET}')
+        eta_str = ''
+        if pct > 3:
+            eta     = elapsed / pct * (100 - pct)
+            eta_str = f'  {DIM_W}ETA {int(eta//60):02d}:{int(eta%60):02d}{RESET}'
+        sys.stdout.write(
+            f'\r  [{bar}] {col}{pct:4.0f}%{RESET}'
+            f'  {WHITE}{label[:32]:<32}{RESET}{eta_str}   '
+        )
+        sys.stdout.flush()
 
-    def _render_patched():
-        prev_tail  = None
-        t_start    = time.time()
+    t_render_start = time.time()
 
-        with sf.SoundFile(out_flac, 'w', samplerate=SR,
-                          channels=2, format='FLAC', subtype='PCM_24') as fh:
-            try:
-                fh.artist    = AUTHOR
-                fh.date      = '2026'
-                fh.copyright = f'{AUTHOR} (2026) | {URL}'
-                fh.license   = URL
-            except Exception:
-                pass
+    render_session(
+        blocks, out_flac,
+        author=AUTHOR, url=URL,
+        progress_cb=_progress,
+    )
 
-            for i, block in enumerate(blocks):
-                # ── Draw block progress
-                done_s = sum(b.dur_s for b in blocks[:i])
-                pct    = done_s / total_core * 100
-                filled = int(pct / 100 * bar_w)
-                bar    = (f'{col}{"█" * filled}{RESET}'
-                          f'{DIM_W}{"░" * (bar_w - filled)}{RESET}')
-
-                elapsed = time.time() - t_start
-                eta_str = ''
-                if pct > 3:
-                    eta = elapsed / pct * (100 - pct)
-                    eta_str = f'  {DIM_W}ETA {int(eta//60):02d}:{int(eta%60):02d}{RESET}'
-
-                sys.stdout.write(
-                    f'\r  [{bar}] {col}{pct:4.0f}%{RESET}'
-                    f'  {WHITE}{block.label[:32]:<32}{RESET}{eta_str}   '
-                )
-                sys.stdout.flush()
-
-                L, R = block.render()
-
-                if i == 0:
-                    fn   = int(5 * SR)
-                    ramp = np.linspace(0, 1, fn, np.float32)
-                    L[:fn] *= ramp; R[:fn] *= ramp
-
-                prev_tail = crossfade_write(fh, prev_tail, L, R, fade_s=8.0)
-                del L, R
-
-                if i in BREAK_AFTER:
-                    bL, bR = pattern_break(carrier=float(block.c1))
-                    prev_tail = crossfade_write(fh, prev_tail, bL, bR, fade_s=3.0)
-                    del bL, bR
-
-            if prev_tail and prev_tail[0] is not None and len(prev_tail[0]):
-                tL, tR = prev_tail
-                fn   = min(int(6*SR), len(tL))
-                ramp = np.linspace(1, 0, fn, np.float32)
-                tL[-fn:] *= ramp; tR[-fn:] *= ramp
-                fh.write(np.stack([tL, tR], axis=1))
-
-        return time.time() - t_start
-
-    elapsed = _render_patched()
+    elapsed = time.time() - t_render_start
     size_mb = os.path.getsize(out_flac) / 1024 / 1024
 
-    # Final bar
     bar_full = f'{col}{"█" * bar_w}{RESET}'
     sys.stdout.write(f'\r  [{bar_full}] {col}100%{RESET}' + ' ' * 50 + '\n')
     sys.stdout.flush()
@@ -455,7 +406,6 @@ def render_with_ui(profile: dict):
 def show_map(profile: dict):
     from psychoacoustic.profiles import build_profile
     from psychoacoustic.renderer import export_map
-    import tempfile
 
     blocks   = build_profile(profile['key'])
     total_s  = sum(b.dur_s for b in blocks)
@@ -481,8 +431,8 @@ def show_map(profile: dict):
 # ══════════════════════════════════════════
 
 def main():
-    sel        = 0
-    show_detail= False
+    sel         = 0
+    show_detail = False
 
     while True:
         draw_menu(sel, show_detail)
@@ -497,7 +447,6 @@ def main():
             show_detail = False
 
         elif k in ('\r', '\n'):
-            # confirm screen
             if draw_confirm(PROFILES[sel]):
                 try:
                     render_with_ui(PROFILES[sel])

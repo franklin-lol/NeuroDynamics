@@ -1,0 +1,18 @@
+PERFORMER "franklin-sys"
+FILE "GENESIS_WALK_30min.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "WALK — ALIGN"
+    PERFORMER "franklin-sys"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "WALK — EXPAND"
+    PERFORMER "franklin-sys"
+    INDEX 01 05:20:00
+  TRACK 03 AUDIO
+    TITLE "WALK — OPERATOR"
+    PERFORMER "franklin-sys"
+    INDEX 01 15:40:00
+  TRACK 04 AUDIO
+    TITLE "WALK — RETURN"
+    PERFORMER "franklin-sys"
+    INDEX 01 26:00:00
