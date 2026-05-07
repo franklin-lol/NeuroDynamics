@@ -44,8 +44,8 @@ genesis_output/
 index.html
 style.css
 
-# Legacy (Ensure v1_old is tracked, but its outputs are not)
-!v1_old/
-v1_old/**/operator_output/
-v1_old/**/*.flac
-v1_old/**/*_MAP.txt
+# Legacy (Ensure legacy_archive is tracked, but its outputs are not)
+!legacy_archive/
+legacy_archive/**/operator_output/
+legacy_archive/**/*.flac
+legacy_archive/**/*_MAP.txt

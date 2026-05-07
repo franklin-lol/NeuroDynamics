@@ -1,4 +1,4 @@
-# Roadmap: NeuroDynamics v3.2 "Organic & Scientific"
+# Roadmap: NeuroDynamics "Organic & Scientific"
 
 **Цель итерации:** Переход от стерильного математического синтеза к органическому звуковому ландшафту и научно обоснованным моделям пространственного слуха.
 
