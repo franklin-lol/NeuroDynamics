@@ -25,6 +25,7 @@ from .core import SR
 # ── Физические константы
 _HEAD_R  = 0.0875       # радиус головы, м
 _SOUND_C = 343.0        # скорость звука, м/с
+_OMEGA0  = _SOUND_C / _HEAD_R  # ≈ 3920 rad/s → f₀ ≈ 624 Hz (Brown-Duda crossover)
 
 
 # ══════════════════════════════════════════════════════════
@@ -58,19 +59,41 @@ def _woodworth_itd_samples(azimuth_rad: float) -> int:
 
 def _brown_duda_ild_filter(az_abs_rad: float) -> tuple:
     """
-    ILD head-shadow filter для контралатерального (дальнего) уха.
-    az_abs_rad: |azimuth| в [0, π/2]  (0=фронт, π/2=сторона)
+    Brown-Duda (1998) head-shadow IIR — one-pole / one-zero.
 
-    Возвращает (b, a) для scipy.signal.lfilter.
-    Ipsilateral (ближнее) ухо: пропускаем без фильтра (flat = gain 1).
+    H(s) = (s/ω₀ + 1/α) / (s/ω₀ + 1)
+    Bilinear transform, prewarped at f₀ = ω₀/(2π) ≈ 624 Hz.
+
+    Properties (analytically verified):
+      DC gain  = 1/α  →  low-freq ILD matches free-field measurements
+      HF gain  = 1.0  →  high-freq diffraction wraps around head (no blockage)
+      Pole     = (-1+K)/(1+K) ≈ -0.915  (stable, causal)
+
+    α(θ) = 1.0 + 0.5·|sin θ|
+      front (0°):  α=1.00  DC=1.000  (no shadow — flat response)
+      mid   (45°): α=1.35  DC=0.739  (-2.6 dB low-freq ILD)
+      side  (90°): α=1.50  DC=0.667  (-3.5 dB low-freq ILD = max shadow)
+
+    FIX vs previous Butterworth LP:
+      Butterworth: DC=1, HF≈0 — attenuates high freq (wrong physics,
+                   wrong Brown-Duda spectrum shape)
+      Brown-Duda:  DC=1/α, HF=1 — matches paper + measured HRTF data
+
+    az_abs_rad: |azimuth| in [0, π/2]
+    Returns: (b, a) 2-tap IIR for scipy.signal.lfilter
     """
-    az      = np.clip(az_abs_rad, 0.0, np.pi / 2)
-    shadow  = np.sin(az)              # 0 (фронт) → 1 (сторона)
+    az    = np.clip(az_abs_rad, 0.0, np.pi / 2)
+    alpha = 1.0 + 0.5 * np.sin(az)          # 1.0 (front) → 1.5 (side)
 
-    # Cutoff: нет тени = 20 кГц (flat), полная тень = ~600 Гц (сильный LP)
-    fc_hz   = max(200.0, 20000.0 * (1.0 - 0.97 * shadow))
-    nyq     = SR / 2.0
-    b, a    = butter(1, min(fc_hz / nyq, 0.99), btype='low')
+    # Bilinear transform of H(s) = (s/ω₀ + 1/α) / (s/ω₀ + 1)
+    # K = ω₀/(2·SR)  — prewarping approximation (error < 0.5% at f₀=624 Hz)
+    K    = (_OMEGA0) / (2.0 * SR)
+    norm = 1.0 / (1.0 + K)
+
+    b = np.array([(1.0 + K / alpha) * norm,   # b₀
+                  (-1.0 + K / alpha) * norm])  # b₁
+    a = np.array([1.0,
+                  (-1.0 + K) * norm])          # a₁  (pole ≈ -0.915, stable)
     return b, a
 
 

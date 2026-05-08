@@ -184,7 +184,9 @@ def isochronic(dur_s, freq, carrier=200.0, vol=0.14,
 def apply_cfc(gamma_sig, dur_s, theta_freq=6.0, strength=0.5):
     n   = len(gamma_sig)
     t   = np.arange(n, dtype=np.float64) / SR
-    env = 1.0-strength+strength*(0.5+0.5*np.sin(2*np.pi*theta_freq*t))
+    # Lisman & Jensen (2007): gamma peaks at theta TROUGH (phase+π).
+    # FIXED: was +0.5*sin → gamma peaked at CREST (inverted PAC). Now -0.5*sin.
+    env = 1.0-strength+strength*(0.5-0.5*np.sin(2*np.pi*theta_freq*t))
     return (gamma_sig * env.astype(np.float32))
 
 

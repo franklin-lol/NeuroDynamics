@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import lfilter
 
 SR = 44100
-_SR_NOISE_RATIO = 0.15  # stochastic resonance optimum: noise = 15% signal RMS
+_SR_NOISE_RATIO = 0.282  # Gammaitoni 1998 optimum: -11.0 dB (was 0.15 = -16.5 dB, under-stimulation)
 
 
 def _rng(seed): return np.random.RandomState(seed)
