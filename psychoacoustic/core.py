@@ -50,11 +50,44 @@ def build_carrier(c0, c1, n, jitter_depth=2.0, seed=0):
     d /= np.max(np.abs(d)) + 1e-9
     return base + d * jitter_depth
 
-# ── Crossfade (equal-power √taper — no loudness dip)
+# ── Crossfade (Spectral STFT Morphing — Phase: ATMOSPHERE)
 
-def _eq_power_fade(n):
-    t = np.linspace(0.0, np.pi / 2, n, dtype=np.float32)
-    return np.cos(t), np.sin(t)
+def _spectral_morph(pL, pR, nL, nR, n):
+    """
+    STFT Overlap-Add morphing between two stereo buffers.
+    Interpolates complex spectra to ensure smooth harmonic transitions.
+    """
+    nfft = 2048
+    hop  = 512
+    w    = np.hanning(nfft)
+    
+    # Pad to fit frames
+    pad = nfft
+    pL_p = np.pad(pL, (0, pad)); pR_p = np.pad(pR, (0, pad))
+    nL_p = np.pad(nL, (0, pad)); nR_p = np.pad(nR, (0, pad))
+    
+    outL = np.zeros(n + pad, dtype=np.float32)
+    outR = np.zeros(n + pad, dtype=np.float32)
+    
+    for i in range(0, n, hop):
+        ratio = i / n
+        # STFT frames
+        f_pL = np.fft.rfft(pL_p[i:i+nfft] * w)
+        f_pR = np.fft.rfft(pR_p[i:i+nfft] * w)
+        f_nL = np.fft.rfft(nL_p[i:i+nfft] * w)
+        f_nR = np.fft.rfft(nR_p[i:i+nfft] * w)
+        
+        # Linear interpolation in complex domain (morph)
+        # Matches phase if frequencies are close, else creates smooth spectral blur
+        m_L = f_pL * (1.0 - ratio) + f_nL * ratio
+        m_R = f_pR * (1.0 - ratio) + f_nR * ratio
+        
+        outL[i:i+nfft] += np.fft.irfft(m_L).astype(np.float32) * w
+        outR[i:i+nfft] += np.fft.irfft(m_R).astype(np.float32) * w
+        
+    # Constant overlap-add gain correction (Hann 50% overlap = 1.5 sum)
+    gain = 2.0 / 3.0 # for 75% overlap or 1.0/sum(w**2) approx
+    return outL[:n] * 0.66, outR[:n] * 0.66
 
 def crossfade_write(fh, prev_tail, new_L, new_R, fade_s=8.0):
     fn = min(int(fade_s * SR), len(new_L) // 4)
@@ -66,9 +99,11 @@ def crossfade_write(fh, prev_tail, new_L, new_R, fade_s=8.0):
 
     pL, pR = prev_tail
     fn = min(fn, len(pL), len(new_L))
-    fo, fi = _eq_power_fade(fn)
-    fh.write(np.stack([pL[:fn]*fo + new_L[:fn]*fi,
-                       pR[:fn]*fo + new_R[:fn]*fi], axis=1))
+    
+    # Use spectral morphing for the transition
+    mL, mR = _spectral_morph(pL[:fn], pR[:fn], new_L[:fn], new_R[:fn], fn)
+    fh.write(np.stack([mL, mR], axis=1))
+    
     body_L = new_L[fn:-fn] if len(new_L) > 2*fn else np.array([], np.float32)
     body_R = new_R[fn:-fn] if len(new_R) > 2*fn else np.array([], np.float32)
     if len(body_L): fh.write(np.stack([body_L, body_R], axis=1))

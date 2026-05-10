@@ -2,6 +2,16 @@
 Профили сессий.
 Каждый профиль — список Block объектов.
 carrier_type, use_drone, use_wind, use_lfo_filter задают тембральный характер.
+
+Громкость (block_gain):
+  GENESIS / WALK / WARRIOR : 1.0 (default) — нормализация 0.70 FS покрывает
+  ORACLE                   : 0.88          — полутранс, чуть тише
+  HEALER                   : 0.55–0.68     — предназначен для сна
+  SLEEP                    : 0.50–0.68     — ночная сессия, максимально тихо
+
+ATMOSPHERE (granular):
+  HEALER VOID 1/2          : use_granular=True, ctype='soft'
+  SLEEP DEEP 1/2           : use_granular=True, очень sparse (density=6)
 """
 
 from .block import Block
@@ -24,6 +34,7 @@ def build_profile(name: str):
 # ══════════════════════════════════════════════════════════
 #  GENESIS — 63 min
 #  Тембр: warm (FM) → soft в void. Drone + wind в ключевых блоках.
+#  block_gain: 1.0 (default) — глобальная -3.1 dB от normalize fix.
 # ══════════════════════════════════════════════════════════
 
 def _genesis():
@@ -157,6 +168,7 @@ def _genesis():
 # ══════════════════════════════════════════════════════════
 #  WALK — 30 min
 #  Тембр: warm. Drone + HRTF для пространственного расширения.
+#  block_gain: 1.0 (default).
 # ══════════════════════════════════════════════════════════
 
 def _walk():
@@ -218,6 +230,16 @@ def _walk():
 # ══════════════════════════════════════════════════════════
 #  SLEEP — 90 min  (3x OBE windows)
 #  Тембр: soft для сна. 3D-orbit в OBE-триггерах.
+#
+#  block_gain:
+#    Delta / фон     : 0.55  →  0.385 FS  (-8.3 dBFS от оригинала)
+#    OBE windows     : 0.65  →  0.455 FS  (заметнее, но не резко)
+#    Hold после OBE  : 0.60
+#    CLOSE (финал)   : 0.50  →  почти тишина
+#
+#  ATMOSPHERE (granular):
+#    DEEP 1 / DEEP 2 : use_granular=True, sparse (density=6),
+#                      grain_size_ms=120 → мягкий, «дышащий» фон
 # ══════════════════════════════════════════════════════════
 
 def _sleep():
@@ -227,18 +249,29 @@ def _sleep():
               carrier_type='soft', noise_pw=1.0, noise_bw=0.0,
               infra_freq=0.10, infra_depth=0.10,
               use_wind=True, wind_vol=0.05,
+              block_gain=0.55,
               seed=51),
+
         Block(label='SLEEP — DRIFT', dur_s=600,
               c0=200, c1=200, b0=5.5, b1=3.0,
               carrier_type='soft', noise_pw=0.4, noise_bw=0.6,
               infra_freq=0.067, infra_depth=0.12,
               use_wind=True, wind_vol=0.05,
+              block_gain=0.55,
               seed=52),
+
+        # ATMOSPHERE: granular дыхание в глубокой дельте
         Block(label='SLEEP — DEEP 1', dur_s=900,
               c0=200, c1=200, b0=3.0, b1=2.0,
               carrier_type='soft', noise_pw=0.0, noise_bw=1.0,
-              infra_freq=0.033, infra_depth=0.14, seed=53),
-        # OBE window 1
+              infra_freq=0.033, infra_depth=0.14,
+              use_granular=True, granular_grain_ms=120.0,
+              granular_density=6.0, granular_pitch_st=0.15,
+              granular_scatter=0.60, granular_vol=0.06,
+              block_gain=0.55,
+              seed=53),
+
+        # OBE window 1 — чуть громче для триггера осознания
         Block(label='SLEEP — WINDOW 1', dur_s=300,
               c0=200, c1=201, b0=2.0, b1=6.0,
               carrier_type='warm', noise_pw=0.2, noise_bw=0.8,
@@ -248,24 +281,39 @@ def _sleep():
               use_hrtf=True, hrtf_az_sweep=8.0, hrtf_elevation=10.0,
               use_chaos=True, chaos_depth=0.20,
               use_drone=True, drone_vol=0.07,
+              block_gain=0.65,
               seed=54),
+
         Block(label='SLEEP — HOLD 1', dur_s=120,
               c0=201, c1=201, b0=6.0, b1=6.0,
               carrier_type='warm', noise_pw=0.3, noise_bw=0.7,
               iso_layers=[(40.0, 200, 0.09, 5, 5)],
               cfc_theta=6.0, cfc_strength=0.45,
-              use_hrtf=True, hrtf_az_sweep=8.0, seed=55),
+              use_hrtf=True, hrtf_az_sweep=8.0,
+              block_gain=0.60,
+              seed=55),
+
         Block(label='SLEEP — DESCENT 1', dur_s=300,
               c0=201, c1=200, b0=6.0, b1=2.0,
               carrier_type='soft', noise_pw=0.1, noise_bw=0.9,
               iso_layers=[(40.0, 200, 0.07, 5, 15)],
-              infra_freq=0.033, infra_depth=0.14, seed=56),
+              infra_freq=0.033, infra_depth=0.14,
+              block_gain=0.55,
+              seed=56),
+
+        # ATMOSPHERE: granular в глубокой дельте 2
         Block(label='SLEEP — DEEP 2', dur_s=900,
               c0=200, c1=202, b0=2.0, b1=2.0,
               carrier_type='soft', noise_pw=0.0, noise_bw=1.0,
               iso_layers=[(40.0, 200, 0.07, 20, 20)],
               cfc_theta=5.0, cfc_strength=0.45,
-              infra_freq=0.025, infra_depth=0.15, seed=57),
+              infra_freq=0.025, infra_depth=0.15,
+              use_granular=True, granular_grain_ms=140.0,
+              granular_density=5.0, granular_pitch_st=0.12,
+              granular_scatter=0.65, granular_vol=0.05,
+              block_gain=0.55,
+              seed=57),
+
         # OBE window 2
         Block(label='SLEEP — WINDOW 2', dur_s=300,
               c0=202, c1=203, b0=2.0, b1=6.0,
@@ -277,18 +325,26 @@ def _sleep():
               use_hrtf=True, hrtf_az_sweep=7.0, hrtf_elevation=15.0,
               use_chaos=True, chaos_depth=0.22,
               use_drone=True, drone_vol=0.07,
+              block_gain=0.65,
               seed=58),
+
         Block(label='SLEEP — HOLD 2', dur_s=120,
               c0=203, c1=203, b0=6.0, b1=6.0,
               carrier_type='warm',
               iso_layers=[(40.0, 200, 0.09, 5, 5)],
               cfc_theta=6.0, cfc_strength=0.50,
-              use_hrtf=True, seed=59),
+              use_hrtf=True,
+              block_gain=0.60,
+              seed=59),
+
         Block(label='SLEEP — DESCENT 2', dur_s=300,
               c0=203, c1=200, b0=6.0, b1=2.0,
               carrier_type='soft', noise_pw=0.1, noise_bw=0.9,
-              infra_freq=0.033, infra_depth=0.14, seed=60),
-        # OBE window 3 — самое глубокое
+              infra_freq=0.033, infra_depth=0.14,
+              block_gain=0.55,
+              seed=60),
+
+        # OBE window 3 — самое глубокое, чуть выше gain для контраста
         Block(label='SLEEP — WINDOW 3', dur_s=300,
               c0=200, c1=204, b0=2.0, b1=7.83,
               carrier_type='warm', noise_pw=0.3, noise_bw=0.7,
@@ -300,25 +356,42 @@ def _sleep():
               use_chaos=True, chaos_depth=0.25,
               phase_lock=True, phase_lock_depth=0.22,
               use_drone=True, drone_vol=0.08,
+              block_gain=0.68,
               seed=61),
+
         Block(label='SLEEP — HOLD 3', dur_s=180,
               c0=204, c1=204, b0=7.83, b1=7.83,
               carrier_type='warm',
               iso_layers=[(40.0, 200, 0.09, 5, 8),
                           (33.0, 180, 0.06, 5, 8)],
               cfc_theta=7.83, cfc_strength=0.40,
-              use_hrtf=True, hrtf_az_sweep=8.0, seed=62),
+              use_hrtf=True, hrtf_az_sweep=8.0,
+              block_gain=0.62,
+              seed=62),
+
         Block(label='SLEEP — CLOSE', dur_s=300,
               c0=204, c1=200, b0=7.83, b1=2.5,
               carrier_type='soft', noise_pw=0.1, noise_bw=0.9,
               use_wind=True, wind_vol=0.04,
-              infra_freq=0.025, infra_depth=0.15, seed=63),
+              infra_freq=0.025, infra_depth=0.15,
+              block_gain=0.50,
+              seed=63),
     ]
 
 
 # ══════════════════════════════════════════════════════════
 #  HEALER — 75 min
 #  Тембр: rich (аддитивный, 5 гармоник). Phi-layers. 528 Hz.
+#
+#  block_gain:
+#    OPEN / DESCENT  : 0.60
+#    VOID 1 / VOID 2 : 0.55  (глубокий сон/восстановление)
+#    RETURN          : 0.65
+#    INTEGRATE       : 0.68
+#
+#  ATMOSPHERE (granular):
+#    VOID 1 / VOID 2 : use_granular=True, carrier_type='soft',
+#                      добавляет органическую текстуру к pure-noise delta.
 # ══════════════════════════════════════════════════════════
 
 def _healer():
@@ -331,7 +404,9 @@ def _healer():
               infra_freq=0.10, infra_depth=0.12,
               use_phi=True, use_drone=True, drone_vol=0.09,
               use_wind=True, wind_vol=0.06,
+              block_gain=0.60,
               seed=71),
+
         Block(label='HEALER — DESCENT', dur_s=720,
               c0=528, c1=528, b0=6.0, b1=2.0,
               carrier_type='rich', noise_pw=0.4, noise_bw=0.6,
@@ -342,7 +417,10 @@ def _healer():
               use_phi=True, use_drone=True, drone_vol=0.09,
               use_wind=True, wind_vol=0.06,
               use_lfo_filter=True, lfo_fc=650.0, lfo_depth=280.0, lfo_rate=0.04,
+              block_gain=0.60,
               seed=72),
+
+        # ATMOSPHERE: granular cloud в первом void (чистый 528 Hz delta)
         Block(label='HEALER — VOID 1', dur_s=900,
               c0=528, c1=528, b0=1.5, b1=1.5,
               carrier_type='soft', noise_pw=0.0, noise_bw=1.0,
@@ -351,32 +429,50 @@ def _healer():
               cfc_theta=5.0, cfc_strength=0.60, assr_80hz_vol=0.04,
               infra_freq=0.033, infra_depth=0.16,
               use_phi=True, use_wind=True, wind_vol=0.05,
+              use_granular=True, granular_grain_ms=110.0,
+              granular_density=9.0, granular_pitch_st=0.22,
+              granular_scatter=0.55, granular_vol=0.08,
+              block_gain=0.55,
               seed=73),
+
+        # ATMOSPHERE: granular cloud во втором void (ещё глубже)
         Block(label='HEALER — VOID 2', dur_s=900,
               c0=528, c1=528, b0=1.5, b1=1.5,
               carrier_type='soft', noise_pw=0.0, noise_bw=1.0,
               iso_layers=[(40.0, 200, 0.07, 20, 20)],
               cfc_theta=4.5, cfc_strength=0.65, assr_80hz_vol=0.04,
               infra_freq=0.025, infra_depth=0.16,
-              use_phi=True, seed=74),
+              use_phi=True,
+              use_granular=True, granular_grain_ms=130.0,
+              granular_density=7.0, granular_pitch_st=0.18,
+              granular_scatter=0.60, granular_vol=0.07,
+              block_gain=0.55,
+              seed=74),
+
         Block(label='HEALER — RETURN', dur_s=480,
               c0=528, c1=432, b0=1.5, b1=8.0,
               carrier_type='rich', noise_pw=0.8, noise_bw=0.2,
               iso_layers=[(40.0, 200, 0.10, 5, 5)],
               cfc_theta=6.0, cfc_strength=0.30,
               infra_freq=0.083, infra_depth=0.11,
-              use_drone=True, drone_vol=0.08, seed=75),
+              use_drone=True, drone_vol=0.08,
+              block_gain=0.65,
+              seed=75),
+
         Block(label='HEALER — INTEGRATE', dur_s=270,
               c0=432, c1=432, b0=8.0, b1=12.0,
               carrier_type='rich', noise_pw=1.0, noise_bw=0.0,
               iso_layers=[(40.0, 200, 0.11, 5, 3)],
-              assr_80hz_vol=0.05, seed=76),
+              assr_80hz_vol=0.05,
+              block_gain=0.68,
+              seed=76),
     ]
 
 
 # ══════════════════════════════════════════════════════════
 #  ORACLE — 60 min
 #  Тембр: warm/organ. Chaos в theta-2. 3D в vision-hold.
+#  block_gain: 0.88 — полутранс, чуть тише активных профилей.
 # ══════════════════════════════════════════════════════════
 
 def _oracle():
@@ -389,7 +485,9 @@ def _oracle():
               infra_freq=0.083, infra_depth=0.11,
               use_hrtf=True, itd_period=14.0,
               use_wind=True, wind_vol=0.06,
+              block_gain=0.88,
               seed=81),
+
         Block(label='ORACLE — THETA 1', dur_s=720,
               c0=432, c1=432, b0=7.83, b1=5.5,
               carrier_type='warm', noise_pw=0.7, noise_bw=0.3,
@@ -400,7 +498,9 @@ def _oracle():
               infra_freq=0.067, infra_depth=0.12,
               use_drone=True, drone_vol=0.08,
               use_lfo_filter=True, lfo_fc=700.0, lfo_depth=320.0, lfo_rate=0.05,
+              block_gain=0.88,
               seed=82),
+
         Block(label='ORACLE — THETA 2 CHAOS', dur_s=720,
               c0=432, c1=432, b0=5.5, b1=4.5,
               carrier_type='warm', noise_pw=0.5, noise_bw=0.5,
@@ -412,7 +512,9 @@ def _oracle():
               use_chaos=True, chaos_depth=0.25,
               phase_lock=True, phase_lock_depth=0.18,
               use_drone=True, drone_vol=0.08,
+              block_gain=0.88,
               seed=83),
+
         Block(label='ORACLE — VISION HOLD', dur_s=480,
               c0=432, c1=432, b0=4.5, b1=4.5,
               carrier_type='organ', noise_pw=0.4, noise_bw=0.6,
@@ -423,7 +525,9 @@ def _oracle():
               infra_freq=0.05, infra_depth=0.14,
               use_phi=True, use_hrtf=True, hrtf_az_sweep=14.0,
               use_wind=True, wind_vol=0.06,
+              block_gain=0.88,
               seed=84),
+
         Block(label='ORACLE — SCHUMANN RETURN', dur_s=480,
               c0=432, c1=432, b0=4.5, b1=7.83,
               carrier_type='organ', schumann_mode=True,
@@ -433,20 +537,25 @@ def _oracle():
               itd_period=12.0, use_hrtf=True, hrtf_az_sweep=12.0,
               infra_freq=0.083,
               use_wind=True, wind_vol=0.05,
+              block_gain=0.88,
               seed=85),
+
         Block(label='ORACLE — SEAL', dur_s=360,
               c0=432, c1=432, b0=7.83, b1=14.0,
               carrier_type='warm', noise_pw=1.0, noise_bw=0.0,
               iso_layers=[(40.0, 200, 0.12, 5, 3),
                           (14.0, 216, 0.08, 8, 3)],
               assr_80hz_vol=0.05,
-              use_drone=True, drone_vol=0.08, seed=86),
+              use_drone=True, drone_vol=0.08,
+              block_gain=0.88,
+              seed=86),
     ]
 
 
 # ══════════════════════════════════════════════════════════
 #  WARRIOR — 50 min
 #  Тембр: sine (чистый, острый). Максимальный ASSR-80.
+#  block_gain: 1.0 (default) — активационный профиль, полная громкость.
 # ══════════════════════════════════════════════════════════
 
 def _warrior():
@@ -457,12 +566,14 @@ def _warrior():
               iso_layers=[(40.0, 200, 0.13, 4, 5)],
               assr_80hz_vol=0.07, itd_period=8.0,
               use_hrtf=True, seed=91),
+
         Block(label='WARRIOR — PEAK', dur_s=600,
               c0=200, c1=432, b0=40.0, b1=40.0,
               carrier_type='sine', noise_pw=1.0, noise_bw=0.0,
               iso_layers=[(40.0, 200, 0.13, 5, 5)],
               assr_80hz_vol=0.08, itd_period=6.0,
               use_hrtf=True, use_chaos=True, chaos_depth=0.15, seed=92),
+
         Block(label='WARRIOR — DESCENT', dur_s=480,
               c0=432, c1=432, b0=40.0, b1=12.0,
               carrier_type='warm', noise_pw=0.8, noise_bw=0.2,
@@ -471,12 +582,14 @@ def _warrior():
               cfc_theta=8.0, cfc_strength=0.28,
               assr_80hz_vol=0.06, itd_period=8.0,
               use_hrtf=True, seed=93),
+
         Block(label='WARRIOR — THETA TOUCH', dur_s=480,
               c0=432, c1=432, b0=12.0, b1=7.83,
               carrier_type='warm', noise_pw=0.7, noise_bw=0.3,
               iso_layers=[(40.0, 200, 0.10, 8, 8)],
               cfc_theta=7.83, cfc_strength=0.38, assr_80hz_vol=0.05,
               infra_freq=0.083, infra_depth=0.10, seed=94),
+
         Block(label='WARRIOR — RELOAD', dur_s=600,
               c0=432, c1=200, b0=7.83, b1=35.0,
               carrier_type='sine', noise_pw=1.0, noise_bw=0.0,
@@ -484,6 +597,7 @@ def _warrior():
                           (35.0, 216, 0.09, 5, 3)],
               assr_80hz_vol=0.07, itd_period=6.0,
               use_hrtf=True, use_chaos=True, chaos_depth=0.12, seed=95),
+
         Block(label='WARRIOR — LOCK', dur_s=540,
               c0=200, c1=200, b0=35.0, b1=40.0,
               carrier_type='sine', noise_pw=1.0, noise_bw=0.0,

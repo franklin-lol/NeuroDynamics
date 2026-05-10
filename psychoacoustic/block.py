@@ -8,7 +8,7 @@ from .core import SR, calibrated_noise
 class Block:
     label:            str
     dur_s:            float
-    # Binaural
+    # ── Binaural
     c0:               float = 200.0
     c1:               float = None
     b0:               float = 10.0
@@ -16,25 +16,25 @@ class Block:
     carrier_jitter:   float = 2.0
     beat_jitter:      float = 0.15
     carrier_type:     str   = 'sine'   # sine|warm|rich|soft|organ
-    # Noise
+    # ── Noise
     noise_pw:         float = 0.5
     noise_bw:         float = 0.1
-    # ISO layers: (freq, carrier_hz, vol, attack_s, decay_s)
+    # ── ISO layers: (freq, carrier_hz, vol, attack_s, decay_s)
     iso_layers:       List  = field(default_factory=list)
-    # CFC
+    # ── CFC
     cfc_theta:        float = 0.0
     cfc_strength:     float = 0.4
-    # Spatial
+    # ── Spatial
     itd_period:       float = 0.0
     spatial_3d:       bool  = False
     el_period:        float = 29.0
     el_depth:         float = 0.35
-    # Infra
+    # ── Infra
     infra_freq:       float = 0.0
     infra_depth:      float = 0.12
-    # ASSR-80
+    # ── ASSR-80
     assr_80hz_vol:    float = 0.0
-    # Modes
+    # ── Modes
     schumann_mode:    bool  = False
     use_chaos:        bool  = False
     chaos_depth:      float = 0.22
@@ -44,7 +44,7 @@ class Block:
     use_phi:          bool  = False
     phase_lock:       bool  = False
     phase_lock_depth: float = 0.20
-    # "Дорогой" звук
+    # ── "Дорогой" звук
     use_drone:        bool  = False
     drone_vol:        float = 0.10
     drone_detune:     float = 0.15
@@ -55,6 +55,26 @@ class Block:
     lfo_fc:           float = 900.0
     lfo_depth:        float = 400.0
     lfo_rate:         float = 0.05
+    # ── ATMOSPHERE — Granular Engine (Phase: ATMOSPHERE v0.1)
+    #    Stochastic grain cloud over psychoacoustic carrier.
+    #    Replaces/augments drone with organic, living texture.
+    use_granular:        bool  = False
+    granular_grain_ms:   float = 80.0   # grain window ms (40–200)
+    granular_density:    float = 12.0   # grains per second (8–20 typical)
+    granular_pitch_st:   float = 0.30   # pitch scatter ±semitones
+    granular_scatter:    float = 0.50   # time position scatter 0–1
+    granular_vol:        float = 0.11   # mix amplitude
+    # ── Master gain (per-block loudness control)
+    #    Applied AFTER normalize. Sets profile-level output volume.
+    #    Reference values:
+    #      GENESIS / WALK / WARRIOR : 1.0  (default — global -3.1 dB from normalize fix)
+    #      ORACLE                   : 0.88
+    #      HEALER open/return       : 0.60
+    #      HEALER void              : 0.55
+    #      SLEEP background delta   : 0.55  → 0.385 FS  ≈ -8.3 dBFS total
+    #      SLEEP OBE windows        : 0.65  → 0.455 FS
+    #      SLEEP close              : 0.50
+    block_gain:          float = 1.0
     seed:             int   = 0
 
     def __post_init__(self):
@@ -124,6 +144,27 @@ class Block:
                                 seed=self.seed + 600)
             L += pad; R += pad
 
+        # ── ATMOSPHERE: Granular cloud
+        if self.use_granular:
+            from .granular import granular_cloud
+            gL = granular_cloud(self.dur_s, self.c0,
+                                grain_size_ms=self.granular_grain_ms,
+                                density=self.granular_density,
+                                pitch_scatter_st=self.granular_pitch_st,
+                                time_scatter=self.granular_scatter,
+                                vol=self.granular_vol,
+                                ctype=self.carrier_type,
+                                seed=self.seed + 900)
+            gR = granular_cloud(self.dur_s, self.c0,
+                                grain_size_ms=self.granular_grain_ms,
+                                density=self.granular_density,
+                                pitch_scatter_st=self.granular_pitch_st,
+                                time_scatter=self.granular_scatter,
+                                vol=self.granular_vol,
+                                ctype=self.carrier_type,
+                                seed=self.seed + 901)
+            L += gL; R += gR
+
         # ── "Дорогой" звук: resonant wind pad
         if self.use_wind:
             wind = resonant_wind_pad(self.dur_s, self.c0,
@@ -190,10 +231,18 @@ class Block:
                                     az_sweep_period=self.hrtf_az_sweep,
                                     elevation_deg=self.hrtf_elevation)
 
-        # ── Normalize (порог 0.90 — безопаснее для последующей конвертации)
+        # ── Normalize: target 0.70 FS  (было 0.88 → снижено на -3.1 dBFS)
+        #    Все профили системно тише. "Минимальная громкость" стала комфортной.
         peak = max(np.max(np.abs(L)), np.max(np.abs(R))) + 1e-9
-        if peak > 0.90:
-            L = (L / peak * 0.88).astype(np.float32)
-            R = (R / peak * 0.88).astype(np.float32)
+        if peak > 0.70:
+            L = (L / peak * 0.70).astype(np.float32)
+            R = (R / peak * 0.70).astype(np.float32)
+
+        # ── Per-block master gain
+        #    Накладывается поверх нормализации. Управляет профильной громкостью.
+        if self.block_gain != 1.0:
+            scale = np.float32(self.block_gain)
+            L = (L * scale).astype(np.float32)
+            R = (R * scale).astype(np.float32)
 
         return L.astype(np.float32), R.astype(np.float32)

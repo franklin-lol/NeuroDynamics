@@ -10,15 +10,19 @@
 *   **Smart Rendering:** Автоматическая генерация CUE-sheets и рендеринг в PCM-24.
 *   **Interactive CLI:** Полнофункциональный Dashboard для управления генерацией.
 
+## [DONE] Phase: ATMOSPHERE (Texture & Synthesis)
+*   **Granular Engine:** Стохастический синтез зернистых облаков (granular clouds) для создания живых органических текстур.
+*   **Spectral Morphing:** Плавные переходы между тембральными состояниями через STFT Overlap-Add интерполяцию.
+*   **Loudness Optimization:** Пересмотр системы нормализации (-3.1 dBFS) и внедрение `block_gain` для комфортного прослушивания.
+
 ## [PLANNED] Phase: NEUROSYNC (Biofeedback & Adaptation)
 *   **EEG Integration:** Поддержка OpenBCI и Muse для сбора данных в реальном времени.
 *   **Adaptive Entrainment:** Динамическая подстройка частоты биений под текущий ритм мозга пользователя.
 *   **Neural Fingerprinting:** Генерация уникальных сессий на основе спектрального анализа ЭЭГ.
 
-## [PLANNED] Phase: ATMOSPHERE (Texture & Synthesis)
-*   **Granular Engine:** Переход от простых тембров к гранулярному синтезу текстур.
+## [PLANNED] Phase: ATMOSPHERE (Advanced)
 *   **Field Recordings:** Интеграция алгоритмически обработанных природных ландшафтов.
-*   **Spectral Morphing:** Плавные переходы между тембральными состояниями через FFT-морфинг.
+*   **Spectral Morphing (Advanced):** Более сложные алгоритмы морфинга для нелинейных переходов.
 
 ## [PLANNED] Phase: ECOSYSTEM (Platform Expansion)
 *   **Web Renderer:** Портирование ядра на WebAudio + WebAssembly для запуска в браузере.

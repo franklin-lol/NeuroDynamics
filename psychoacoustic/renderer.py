@@ -82,6 +82,7 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
         elif b.itd_period:    flags.append(f"ITD-2D period={b.itd_period}s")
         if b.infra_freq:      flags.append(f"Infra {b.infra_freq}Hz d={b.infra_depth}")
         if b.use_drone:       flags.append(f"Drone vol={b.drone_vol} det={b.drone_detune}Hz")
+        if b.use_granular:    flags.append(f"Granular dens={b.granular_density} size={b.granular_grain_ms}ms")
         if b.use_wind:        flags.append(f"Wind vol={b.wind_vol} bw={b.wind_bw}Hz")
         if b.use_lfo_filter:  flags.append(f"LFO-filt fc={b.lfo_fc}Hz")
         if b.schumann_mode:   flags.append("Schumann-stack")
