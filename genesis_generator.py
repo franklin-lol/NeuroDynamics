@@ -100,7 +100,7 @@ PROFILES = [
         'short': 'Полный спектр — флагманская сессия',
         'desc': [
             'Gamma ignition → Schumann → Theta → Void → Integration',
-            'Все слои активны: HRTF · CFC · Lorenz · ASSR-80 · Phi',
+            'Новое: Monaural · Formant · Saturate · Resp-sync · Prime',
             'Carrier cascade: 200→432→528→639→432→200 Hz',
         ],
         'protocol': [
@@ -118,7 +118,7 @@ PROFILES = [
         'short': 'Расширенное восприятие в движении',
         'desc': [
             'Alpha→Theta (12→7.5 Hz) · оператор-режим без транса',
-            'HRTF + ITD-ротация → широкополосное пространство',
+            'Новое: MonoBeat · Formant · Saturate · Reverb',
             'Gamma-якорь держит ясность всю сессию',
         ],
         'protocol': [
@@ -135,7 +135,7 @@ PROFILES = [
         'short': 'Глубокий сон + 3 окна осознания (OBE)',
         'desc': [
             'Descent → Deep delta → 3× gamma-spike trigger cycles',
-            'Окна осознания: ~40, 65, 88 мин — OBE-архитектура',
+            'Новое: Respiratory 4bpm · Mono-OBE triggers',
             'HRTF + Lorenz chaos в триггерных блоках',
         ],
         'protocol': [
@@ -153,7 +153,7 @@ PROFILES = [
         'short': 'Глубокая дельта · восстановление · 528 Hz',
         'desc': [
             '528 Hz Solfeggio MI carrier на всей сессии',
-            'Phi (φ=1.618) geometry layers · delta 1.5 Hz hold',
+            'Новое: Formant-rich · Resp-sync 4bpm · Reverb',
             'Двойной void-блок · максимальный CFC strength',
         ],
         'protocol': [
@@ -170,7 +170,7 @@ PROFILES = [
         'short': 'Ясновидение · Шуман · тета-коридор',
         'desc': [
             '432 Hz · все 5 резонансов Шумана одновременно',
-            'Lorenz chaos в theta-2 → деактивация DMN',
+            'Новое: MonoBeat · Formant · Saturate · Resp-sync',
             'Phase lock: дыхание = master clock всей сессии',
         ],
         'protocol': [
@@ -187,7 +187,7 @@ PROFILES = [
         'short': 'Beta/Gamma пик · полная активация',
         'desc': [
             'Gamma (30–40 Hz) dominant · ASSR-80 на максимуме',
-            'HRTF + ITD + Lorenz chaos с первого блока',
+            'Новое: Mono-gamma · Saturate · Activation-lock',
             'Минимальная дельта · фокус на beta-lock финале',
         ],
         'protocol': [

@@ -4,7 +4,7 @@ import os, sys, time
 from typing import List, Callable, Optional
 from .block import Block
 from .core  import SR, crossfade_write
-from .dsp   import pattern_break
+from .dsp   import pattern_break, ffr_prime_burst
 
 
 # ══════════════════════════════════════════════════════════
@@ -88,6 +88,11 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
         if b.schumann_mode:   flags.append("Schumann-stack")
         if b.use_phi:         flags.append("φ-layer")
         if b.phase_lock:      flags.append(f"PhLock d={b.phase_lock_depth}")
+        if b.use_monaural:    flags.append(f"MonoBeat vol={b.monaural_vol}")
+        if b.use_formant:     flags.append(f"Formant intensity={b.formant_intensity}")
+        if b.use_saturate:    flags.append(f"Saturate drive={b.saturate_drive}")
+        if b.use_reverb:      flags.append(f"Reverb wet={b.reverb_wet} rt60={b.reverb_rt60}")
+        if b.use_respiratory: flags.append(f"Resp bpm={b.breath_bpm} d={b.breath_depth}")
         if flags:
             lines.append("        " + "  ·  ".join(flags))
         lines.append("")
@@ -107,8 +112,13 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
               "  HRTF:     Brown-Duda spherical head (Woodworth ITD + IIR ILD)",
               "  3D-orbit: azimuth circle + elevation Lissajous",
               "  Infra:    ultra-slow AM → ANS sync",
+              "  MonoBeat: monaural AM pathway (brainstem)",
+              "  Formant:  F1/F2/F3 vocal resonator",
+              "  Saturate: arctan tube-warmth (soft-clip)",
+              "  Reverb:   synthetic IR room reverb",
+              "  Resp:     respiratory-sync AM (HRV coherence)",
               "  SR noise: stochastic-resonance optimal (15% signal RMS)",
-              "  order:    spatial→infra→HRTF→normalize (correct pipeline)",
+              "  order:    spatial→infra→Resp→HRTF→Reverb→normalize",
               "═" * 72]
 
     with open(out_path, 'w', encoding='utf-8') as f:
@@ -186,20 +196,25 @@ def render_session(blocks: List[Block],
                     f"\r  [{bar}] {pct:4.0f}%  {block.label[:36]:<36s}")
                 sys.stdout.flush()
 
+            # ── FFR Prime Burst (только перед первым блоком)
+            if i == 0:
+                pL, pR = ffr_prime_burst(carrier=block.c0,
+                                         carrier_type=block.carrier_type)
+                prev_tail = crossfade_write(fh, None, pL, pR,
+                                            fade_s=4.0, silence_s=0.2)
+                del pL, pR
+
             L, R = block.render()
 
-            if i == 0:
-                fn   = int(5 * SR)
-                ramp = np.linspace(0, 1, fn, np.float32)
-                L[:fn] *= ramp; R[:fn] *= ramp
-
-            prev_tail = crossfade_write(fh, prev_tail, L, R, fade_s=fade_s)
+            prev_tail = crossfade_write(fh, prev_tail, L, R,
+                                        fade_s=fade_s, silence_s=0.5)
             del L, R
 
             if i in BREAK_AFTER:
                 bL, bR = pattern_break(carrier=float(block.c1),
                                        carrier_type=block.carrier_type)
-                prev_tail = crossfade_write(fh, prev_tail, bL, bR, fade_s=3.0)
+                prev_tail = crossfade_write(fh, prev_tail, bL, bR,
+                                            fade_s=3.0, silence_s=0.2)
                 del bL, bR
 
         # Финальный fade-out

@@ -39,12 +39,12 @@ class Block:
     use_chaos:        bool  = False
     chaos_depth:      float = 0.22
     use_hrtf:         bool  = False
-    hrtf_elevation:   float = 0.0     # deg, -45…+45
-    hrtf_az_sweep:    float = 0.0     # sec per sweep (0=static)
+    hrtf_elevation:   float = 0.0
+    hrtf_az_sweep:    float = 0.0
     use_phi:          bool  = False
     phase_lock:       bool  = False
     phase_lock_depth: float = 0.20
-    # ── "Дорогой" звук
+    # ── Дорогой звук: базовые слои
     use_drone:        bool  = False
     drone_vol:        float = 0.10
     drone_detune:     float = 0.15
@@ -55,25 +55,44 @@ class Block:
     lfo_fc:           float = 900.0
     lfo_depth:        float = 400.0
     lfo_rate:         float = 0.05
-    # ── ATMOSPHERE — Granular Engine (Phase: ATMOSPHERE v0.1)
-    #    Stochastic grain cloud over psychoacoustic carrier.
-    #    Replaces/augments drone with organic, living texture.
+    # ── ATMOSPHERE — Granular Engine
     use_granular:        bool  = False
-    granular_grain_ms:   float = 80.0   # grain window ms (40–200)
-    granular_density:    float = 12.0   # grains per second (8–20 typical)
-    granular_pitch_st:   float = 0.30   # pitch scatter ±semitones
-    granular_scatter:    float = 0.50   # time position scatter 0–1
-    granular_vol:        float = 0.11   # mix amplitude
-    # ── Master gain (per-block loudness control)
-    #    Applied AFTER normalize. Sets profile-level output volume.
-    #    Reference values:
-    #      GENESIS / WALK / WARRIOR : 1.0  (default — global -3.1 dB from normalize fix)
-    #      ORACLE                   : 0.88
-    #      HEALER open/return       : 0.60
-    #      HEALER void              : 0.55
-    #      SLEEP background delta   : 0.55  → 0.385 FS  ≈ -8.3 dBFS total
-    #      SLEEP OBE windows        : 0.65  → 0.455 FS
-    #      SLEEP close              : 0.50
+    granular_grain_ms:   float = 80.0
+    granular_density:    float = 12.0
+    granular_pitch_st:   float = 0.30
+    granular_scatter:    float = 0.50
+    granular_vol:        float = 0.11
+    # ── MONAURAL BEAT LAYER — двойной entrainment pathway
+    #    AM-модуляция несущей на beat_freq → brainstem pathway (без наушников).
+    #    beat_freq=0.0: автоматически берёт b0 блока.
+    use_monaural:     bool  = False
+    monaural_vol:     float = 0.05
+    monaural_beat_hz: float = 0.0     # 0.0 → auto = b0
+    # ── FORMANT RESONATOR — живой, голосовой тембр
+    #    F1/F2/F3 bandpass bank → ощущение "живого" источника.
+    use_formant:        bool  = False
+    formant_intensity:  float = 0.22  # 0.15–0.35
+    # ── TUBE SATURATION — аналоговое тепло
+    #    arctan soft-clip, drive 0.08–0.14: едва слышимые чётные гармоники.
+    use_saturate:       bool  = False
+    saturate_drive:     float = 0.10
+    # ── ROOM REVERB — пространственная глубина
+    #    Synthetic IR reverb. НЕ применять к SLEEP (сохранить ITD точность).
+    use_reverb:         bool  = False
+    reverb_wet:         float = 0.10
+    reverb_rt60:        float = 700.0
+    # ── RESPIRATORY ENTRAINMENT — синхронизация дыхания
+    #    Ultra-slow AM (breath_bpm/60 Hz) → vagal tone / HRV coherence.
+    #    4.0 bpm = Yoga Nidra (SLEEP/HEALER)
+    #    6.0 bpm = HRV coherence peak (ORACLE/GENESIS)
+    use_respiratory:    bool  = False
+    breath_bpm:         float = 6.0
+    breath_depth:       float = 0.14
+    # ── Master gain (per-block loudness)
+    #    Applied AFTER normalize(0.56 FS).
+    #    SLEEP delta: 0.55 → 0.56×0.55 = 0.308 FS (-10.2 dBFS от оригинала)
+    #    SLEEP OBE:   0.65 → 0.364 FS
+    #    HEALER void: 0.55 → 0.308 FS
     block_gain:          float = 1.0
     seed:             int   = 0
 
@@ -81,13 +100,15 @@ class Block:
         if self.c1 is None: self.c1 = self.c0
         if self.b1 is None: self.b1 = self.b0
 
-    # ──────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────
     def render(self) -> Tuple[np.ndarray, np.ndarray]:
         from .core  import log_sweep, jitter_envelope
         from .dsp   import (dual_binaural, isochronic, apply_cfc,
                             assr_80hz, schumann_stack, spatial_rotation,
                             spatial_rotation_3d, infra_modulate,
-                            detuned_drone, resonant_wind_pad, lfo_filter)
+                            detuned_drone, resonant_wind_pad, lfo_filter,
+                            tube_saturate, formant_resonator, room_reverb,
+                            monaural_beat_layer, respiratory_entrainment_mod)
         from .chaos import chaos_modulate
         from .hrtf  import hrtf_externalize
         from .phi   import phi_beat_layer
@@ -102,12 +123,11 @@ class Block:
         else:
             B_raw = jitter_envelope(B_raw, self.beat_jitter, self.seed + 50)
 
-        # Cross-modal phase lock: infra envelope → beat modulation
         if self.phase_lock and self.infra_freq > 0:
             t     = np.arange(n, dtype=np.float64) / SR
             B_raw *= (1.0 + self.phase_lock_depth
                       * np.sin(2 * np.pi * self.infra_freq * t + self.seed * 0.7))
-            B_raw = np.clip(B_raw, 0.3, 120.0)
+            B_raw  = np.clip(B_raw, 0.3, 120.0)
 
         # ── Base binaural
         kw = dict(carrier_jitter=self.carrier_jitter,
@@ -135,7 +155,7 @@ class Block:
                                     vol=0.16, seed=self.seed)
             L += pL; R += pR
 
-        # ── "Дорогой" звук: detuned drone pad
+        # ── Detuned drone pad
         if self.use_drone:
             pad = detuned_drone(self.dur_s, self.c0,
                                 detune_hz=self.drone_detune,
@@ -165,13 +185,23 @@ class Block:
                                 seed=self.seed + 901)
             L += gL; R += gR
 
-        # ── "Дорогой" звук: resonant wind pad
+        # ── Resonant wind pad
         if self.use_wind:
             wind = resonant_wind_pad(self.dur_s, self.c0,
                                      bw_hz=self.wind_bw,
                                      vol=self.wind_vol,
                                      seed=self.seed + 700)
             L += wind; R += wind
+
+        # ── Monaural beat layer (brainstem pathway — дополняет бинауральный)
+        if self.use_monaural:
+            beat_hz = self.monaural_beat_hz if self.monaural_beat_hz > 0 else self.b0
+            mono = monaural_beat_layer(self.dur_s, self.c0,
+                                       beat_freq=beat_hz,
+                                       vol=self.monaural_vol,
+                                       ctype=self.carrier_type,
+                                       seed=self.seed + 1000)
+            L += mono; R += mono
 
         # ── ISO layers + CFC
         for (fv, cv, vv, atk, dec) in self.iso_layers:
@@ -190,25 +220,36 @@ class Block:
                                 self.cfc_theta, self.cfc_strength * 0.5)
             L += a80; R += a80
 
-        # ── LFO filter sweep (тембральное дыхание, до пространственной обработки)
+        # ── LFO filter sweep (тембральное дыхание)
         if self.use_lfo_filter:
             L = lfo_filter(L, self.lfo_fc, self.lfo_depth,
                            self.lfo_rate, self.seed + 800)
             R = lfo_filter(R, self.lfo_fc, self.lfo_depth,
                            self.lfo_rate, self.seed + 801)
 
-        # ── SR-calibrated noise (до пространственной обработки)
+        # ── Formant resonator (живой, голосовой тембр)
+        if self.use_formant:
+            L = formant_resonator(L, self.formant_intensity)
+            R = formant_resonator(R, self.formant_intensity)
+
+        # ── Tube saturation (аналоговое тепло, очень мягкое)
+        if self.use_saturate:
+            L = tube_saturate(L, self.saturate_drive)
+            R = tube_saturate(R, self.saturate_drive)
+
+        # ── Calibrated SR-noise
         nz = calibrated_noise(L, R, self.noise_pw, self.noise_bw,
                               self.seed + 300)
         L += nz; R += nz
 
-        # ══════════════════════════════════════════════════
-        #  ПРОСТРАНСТВЕННАЯ ЦЕПОЧКА — ПОРЯДОК КРИТИЧЕН:
-        #  1. Spatial rotation (ITD orbit)  — создаёт L/R панораму
-        #  2. Infra-modulation              — медленная AM поверх панорамы
-        #  3. HRTF externalization          — последний шаг: "выносит"
-        #     образ из головы, применяется к уже сформированной панораме
-        # ══════════════════════════════════════════════════
+        # ══════════════════════════════════════════════════════════════
+        #  ПРОСТРАНСТВЕННАЯ ЦЕПОЧКА — порядок критичен:
+        #  1. Spatial rotation  — создаёт L/R панораму
+        #  2. Infra-modulation  — медленная AM поверх панорамы
+        #  3. Respiratory AM    — вторая ultra-slow AM (дыхание)
+        #  4. HRTF              — выносит образ из головы
+        #  5. Room reverb       — пространственная глубина (после HRTF)
+        # ══════════════════════════════════════════════════════════════
 
         # 1. Spatial rotation
         if self.spatial_3d and self.itd_period > 0:
@@ -219,27 +260,39 @@ class Block:
         elif self.itd_period > 0:
             L, R = spatial_rotation(L, R, self.itd_period)
 
-        # 2. Infra-modulation (медленная AM, не меняет пространство)
+        # 2. Infra-modulation
         if self.infra_freq > 0:
             L, R = infra_modulate(L, R, self.infra_freq,
                                   self.infra_depth,
                                   phase_offset=self.seed * 0.7)
 
-        # 3. HRTF externalization (последний пространственный слой)
+        # 3. Respiratory entrainment (vagal sync)
+        if self.use_respiratory:
+            mod  = respiratory_entrainment_mod(self.dur_s,
+                                               self.breath_bpm,
+                                               self.breath_depth)
+            L = (L * mod).astype(np.float32)
+            R = (R * mod).astype(np.float32)
+
+        # 4. HRTF externalization
         if self.use_hrtf:
             L, R = hrtf_externalize(L, R,
                                     az_sweep_period=self.hrtf_az_sweep,
                                     elevation_deg=self.hrtf_elevation)
 
-        # ── Normalize: target 0.70 FS  (было 0.88 → снижено на -3.1 dBFS)
-        #    Все профили системно тише. "Минимальная громкость" стала комфортной.
+        # 5. Room reverb (только для блоков где это задано)
+        if self.use_reverb:
+            L, R = room_reverb(L, R,
+                               rt60_ms=self.reverb_rt60,
+                               wet=self.reverb_wet)
+
+        # ── Normalize: target 0.56 FS  (-4.0 dBFS vs 0.88 оригинал)
         peak = max(np.max(np.abs(L)), np.max(np.abs(R))) + 1e-9
-        if peak > 0.70:
-            L = (L / peak * 0.70).astype(np.float32)
-            R = (R / peak * 0.70).astype(np.float32)
+        if peak > 0.56:
+            L = (L / peak * 0.56).astype(np.float32)
+            R = (R / peak * 0.56).astype(np.float32)
 
         # ── Per-block master gain
-        #    Накладывается поверх нормализации. Управляет профильной громкостью.
         if self.block_gain != 1.0:
             scale = np.float32(self.block_gain)
             L = (L * scale).astype(np.float32)
