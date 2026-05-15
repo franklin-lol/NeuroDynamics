@@ -1,0 +1,70 @@
+<svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&amp;display=swap');
+    
+    .logo-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 54px;
+      letter-spacing: 12px;
+      fill: #c9a84c;
+      text-transform: uppercase;
+    }
+    
+    .subtitle {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 200;
+      font-size: 10px;
+      letter-spacing: 6px;
+      fill: #6b6b72;
+      text-transform: uppercase;
+    }
+    
+    .wave {
+      stroke: #c9a84c;
+      stroke-width: 0.8;
+      opacity: 0.4;
+      animation: wave-move 8s ease-in-out infinite;
+    }
+    
+    .wave-2 { animation-delay: -2s; opacity: 0.2; }
+    .wave-3 { animation-delay: -4s; opacity: 0.1; }
+    
+    @keyframes wave-move {
+      0%, 100% { transform: translateY(0) scaleY(1); }
+      50% { transform: translateY(-5px) scaleY(0.9); }
+    }
+    
+    .pulse {
+      stroke: url(#pulse-grad);
+      stroke-width: 1;
+      animation: pulse-op 4s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-op {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.6; }
+    }
+  </style>
+
+  <defs>
+    <linearGradient id="pulse-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="transparent" />
+      <stop offset="40%" stop-color="#c9a84c" />
+      <stop offset="60%" stop-color="#c9a84c" />
+      <stop offset="100%" stop-color="transparent" />
+    </linearGradient>
+  </defs>
+
+  <!-- Waves -->
+  <path class="wave" d="M0 100 Q 100 70, 200 100 T 400 100 T 600 100 T 800 100" fill="none" />
+  <path class="wave wave-2" d="M0 110 Q 150 80, 300 110 T 600 110 T 900 110" fill="none" />
+  <path class="wave wave-3" d="M0 90 Q 50 120, 150 90 T 300 90 T 450 90 T 600 90 T 800 90" fill="none" />
+  
+  <!-- Pulse Line -->
+  <line class="pulse" x1="0" y1="100" x2="800" y2="100" />
+
+  <!-- Text -->
+  <text x="400" y="85" text-anchor="middle" class="logo-text">NeuroDynamics</text>
+  <text x="400" y="130" text-anchor="middle" class="subtitle">Architecture of Consciousness</text>
+</svg>
