@@ -1,7 +1,12 @@
 # Python
+# Local AI context
+GEMINI.md
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
 *.so
 .Python
 build/
