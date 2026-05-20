@@ -4,7 +4,7 @@ import os, sys, time
 from typing import List, Callable, Optional
 from .block import Block
 from .core  import SR, crossfade_write
-from .dsp   import pattern_break, ffr_prime_burst
+from .dsp   import pattern_break, ffr_prime_burst, ambient_bridge
 
 
 # ══════════════════════════════════════════════════════════
@@ -211,10 +211,12 @@ def render_session(blocks: List[Block],
             del L, R
 
             if i in BREAK_AFTER:
-                bL, bR = pattern_break(carrier=float(block.c1),
-                                       carrier_type=block.carrier_type)
+                bL, bR = ambient_bridge(carrier=float(block.c1),
+                                        carrier_type='soft',
+                                        dur_s=20.0,
+                                        seed=i * 17 + 3)
                 prev_tail = crossfade_write(fh, prev_tail, bL, bR,
-                                            fade_s=3.0, silence_s=0.2)
+                                            fade_s=6.0, silence_s=0.0)
                 del bL, bR
 
         # Финальный fade-out

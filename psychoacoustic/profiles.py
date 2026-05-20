@@ -292,6 +292,7 @@ def _sleep():
               use_wind=True, wind_vol=0.05,
               use_respiratory=True, breath_bpm=5.0, breath_depth=0.13,
               block_gain=0.55,
+              use_comfort_eq=True,
               seed=51),
 
         Block(label='SLEEP — DRIFT', dur_s=600,
@@ -301,6 +302,7 @@ def _sleep():
               use_wind=True, wind_vol=0.05,
               use_respiratory=True, breath_bpm=4.5, breath_depth=0.14,
               block_gain=0.55,
+              use_comfort_eq=True,
               seed=52),
 
         # granular дыхание в глубокой дельте 1
@@ -313,6 +315,7 @@ def _sleep():
               granular_scatter=0.60, granular_vol=0.06,
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.15,
               block_gain=0.55,
+              use_comfort_eq=True,
               seed=53),
 
         # OBE window 1 — monaural усиливает trigg
@@ -327,6 +330,7 @@ def _sleep():
               use_drone=True, drone_vol=0.07,
               use_monaural=True, monaural_vol=0.04, monaural_beat_hz=6.0,
               block_gain=0.65,
+              use_comfort_eq=True,
               seed=54),
 
         Block(label='SLEEP — HOLD 1', dur_s=120,
@@ -337,6 +341,7 @@ def _sleep():
               use_hrtf=True, hrtf_az_sweep=8.0,
               use_monaural=True, monaural_vol=0.04, monaural_beat_hz=6.0,
               block_gain=0.60,
+              use_comfort_eq=True,
               seed=55),
 
         Block(label='SLEEP — DESCENT 1', dur_s=300,
@@ -346,6 +351,7 @@ def _sleep():
               infra_freq=0.033, infra_depth=0.14,
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.15,
               block_gain=0.55,
+              use_comfort_eq=True,
               seed=56),
 
         # granular дыхание в глубокой дельте 2
@@ -360,6 +366,7 @@ def _sleep():
               granular_scatter=0.65, granular_vol=0.05,
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.15,
               block_gain=0.55,
+              use_comfort_eq=True,
               seed=57),
 
         # OBE window 2
@@ -375,6 +382,7 @@ def _sleep():
               use_drone=True, drone_vol=0.07,
               use_monaural=True, monaural_vol=0.04, monaural_beat_hz=6.0,
               block_gain=0.65,
+              use_comfort_eq=True,
               seed=58),
 
         Block(label='SLEEP — HOLD 2', dur_s=120,
@@ -385,6 +393,7 @@ def _sleep():
               use_hrtf=True,
               use_monaural=True, monaural_vol=0.04, monaural_beat_hz=6.0,
               block_gain=0.60,
+              use_comfort_eq=True,
               seed=59),
 
         Block(label='SLEEP — DESCENT 2', dur_s=300,
@@ -393,6 +402,7 @@ def _sleep():
               infra_freq=0.033, infra_depth=0.14,
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.15,
               block_gain=0.55,
+              use_comfort_eq=True,
               seed=60),
 
         # OBE window 3 — самый глубокий
@@ -409,6 +419,7 @@ def _sleep():
               use_drone=True, drone_vol=0.08,
               use_monaural=True, monaural_vol=0.04, monaural_beat_hz=7.83,
               block_gain=0.68,
+              use_comfort_eq=True,
               seed=61),
 
         Block(label='SLEEP — HOLD 3', dur_s=180,
@@ -420,6 +431,7 @@ def _sleep():
               use_hrtf=True, hrtf_az_sweep=8.0,
               use_monaural=True, monaural_vol=0.04, monaural_beat_hz=7.83,
               block_gain=0.62,
+              use_comfort_eq=True,
               seed=62),
 
         Block(label='SLEEP — CLOSE', dur_s=300,
@@ -429,6 +441,7 @@ def _sleep():
               infra_freq=0.025, infra_depth=0.15,
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.16,
               block_gain=0.50,
+              use_comfort_eq=True,
               seed=63),
     ]
 
@@ -559,7 +572,8 @@ def _oracle():
               use_saturate=True, saturate_drive=0.10,
               use_reverb=True, reverb_rt60=700.0, reverb_wet=0.11,
               use_respiratory=True, breath_bpm=6.0, breath_depth=0.13,
-              block_gain=0.88,
+              block_gain=0.78,
+              use_comfort_eq=True,
               seed=81),
 
         Block(label='ORACLE — THETA 1', dur_s=720,
@@ -577,7 +591,8 @@ def _oracle():
               use_saturate=True, saturate_drive=0.10,
               use_reverb=True, reverb_rt60=750.0, reverb_wet=0.11,
               use_respiratory=True, breath_bpm=6.0, breath_depth=0.13,
-              block_gain=0.88,
+              block_gain=0.78,
+              use_comfort_eq=True,
               seed=82),
 
         Block(label='ORACLE — THETA 2 CHAOS', dur_s=720,
@@ -596,7 +611,8 @@ def _oracle():
               use_saturate=True, saturate_drive=0.10,
               use_reverb=True, reverb_rt60=800.0, reverb_wet=0.11,
               use_respiratory=True, breath_bpm=5.5, breath_depth=0.14,
-              block_gain=0.88,
+              block_gain=0.78,
+              use_comfort_eq=True,
               seed=83),
 
         Block(label='ORACLE — VISION HOLD', dur_s=480,
@@ -612,7 +628,8 @@ def _oracle():
               use_formant=True, formant_intensity=0.24,
               use_reverb=True, reverb_rt60=1000.0, reverb_wet=0.12,
               use_respiratory=True, breath_bpm=5.0, breath_depth=0.15,
-              block_gain=0.88,
+              block_gain=0.78,
+              use_comfort_eq=True,
               seed=84),
 
         Block(label='ORACLE — SCHUMANN RETURN', dur_s=480,
@@ -629,7 +646,8 @@ def _oracle():
               use_saturate=True, saturate_drive=0.09,
               use_reverb=True, reverb_rt60=700.0, reverb_wet=0.10,
               use_respiratory=True, breath_bpm=6.0, breath_depth=0.12,
-              block_gain=0.88,
+              block_gain=0.78,
+              use_comfort_eq=True,
               seed=85),
 
         Block(label='ORACLE — SEAL', dur_s=360,
@@ -642,7 +660,8 @@ def _oracle():
               use_monaural=True, monaural_vol=0.05,
               use_formant=True, formant_intensity=0.20,
               use_saturate=True, saturate_drive=0.10,
-              block_gain=0.88,
+              block_gain=0.78,
+              use_comfort_eq=True,
               seed=86),
     ]
 

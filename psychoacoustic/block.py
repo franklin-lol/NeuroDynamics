@@ -94,6 +94,10 @@ class Block:
     #    SLEEP OBE:   0.65 → 0.364 FS
     #    HEALER void: 0.55 → 0.308 FS
     block_gain:          float = 1.0
+    # ── Comfort EQ: mastering low shelf +1.5dB@100Hz + high shelf -2.5dB@7.5kHz
+    #    Enable for SLEEP, HEALER, ORACLE — adds warmth, reduces listening fatigue.
+    #    Do NOT enable for WARRIOR — preserves gamma sharpness.
+    use_comfort_eq:      bool  = False
     seed:             int   = 0
 
     def __post_init__(self):
@@ -108,7 +112,8 @@ class Block:
                             spatial_rotation_3d, infra_modulate,
                             detuned_drone, resonant_wind_pad, lfo_filter,
                             tube_saturate, formant_resonator, room_reverb,
-                            monaural_beat_layer, respiratory_entrainment_mod)
+                            monaural_beat_layer, respiratory_entrainment_mod,
+                            comfort_filter)
         from .chaos import chaos_modulate
         from .hrtf  import hrtf_externalize
         from .phi   import phi_beat_layer
@@ -297,5 +302,10 @@ class Block:
             scale = np.float32(self.block_gain)
             L = (L * scale).astype(np.float32)
             R = (R * scale).astype(np.float32)
+
+        # ── Comfort EQ: mastering low shelf / high shelf
+        #    Applied last (after gain) so gains don't undo the shelf.
+        if self.use_comfort_eq:
+            L, R = comfort_filter(L, R)
 
         return L.astype(np.float32), R.astype(np.float32)
