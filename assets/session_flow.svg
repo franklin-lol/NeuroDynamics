@@ -1,0 +1,56 @@
+<svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#50DCFF" stop-opacity="0.3" />
+      <stop offset="50%" stop-color="#A064FF" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#FFC832" stop-opacity="0.3" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <style>
+    .wave {
+      fill: url(#grad);
+      filter: url(#glow);
+      opacity: 0.6;
+    }
+    @keyframes move {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-400px); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scaleY(1); }
+      50% { opacity: 0.8; transform: scaleY(1.2); }
+    }
+    .w1 { animation: move 8s linear infinite; }
+    .w2 { animation: move 12s linear infinite reverse; }
+    .w3 { animation: move 20s linear infinite; opacity: 0.3; }
+    .node {
+        fill: #FFC832;
+        animation: pulse 4s ease-in-out infinite;
+    }
+  </style>
+
+  <!-- Background -->
+  <rect width="800" height="200" fill="#0C0F16" />
+
+  <!-- Neural Waves -->
+  <g transform="translate(0, 100)">
+    <path class="wave w3" d="M0,0 Q100,-60 200,0 T400,0 T600,0 T800,0 T1000,0 T1200,0 V50 H0 Z" />
+    <path class="wave w2" d="M0,0 Q100,-40 200,0 T400,0 T600,0 T800,0 T1000,0 T1200,0 V50 H0 Z" />
+    <path class="wave w1" d="M0,0 Q100,-25 200,0 T400,0 T600,0 T800,0 T1000,0 T1200,0 V50 H0 Z" />
+  </g>
+
+  <!-- Golden Ratio Grid (Phi) -->
+  <line x1="494" y1="0" x2="494" y2="200" stroke="#FFFFFF" stroke-opacity="0.05" stroke-dasharray="4" />
+  <text x="500" y="20" fill="#FFFFFF" fill-opacity="0.2" font-family="monospace" font-size="10">phi = 1.618</text>
+
+  <!-- Status nodes -->
+  <circle class="node" cx="100" cy="100" r="2" />
+  <circle class="node" cx="300" cy="100" r="2" style="animation-delay: 1s" />
+  <circle class="node" cx="500" cy="100" r="2" style="animation-delay: 2s" />
+  <circle class="node" cx="700" cy="100" r="2" style="animation-delay: 3s" />
+</svg>
