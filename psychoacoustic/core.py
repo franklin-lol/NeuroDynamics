@@ -92,23 +92,21 @@ def _cosine_fade(n: int):
 
 def crossfade_write(fh, prev_tail, new_L, new_R,
                     fade_s: float = 10.0,
-                    silence_s: float = 0.5):
+                    silence_s: float = 0.5,
+                    equal_power: bool = False):
     """
-    Профессиональный crossfade через тишину.
+    Crossfade between blocks.
 
-    Алгоритм:
-      1. Хвост предыдущего блока: cosine fade 1→0
-      2. Тишина silence_s секунд (Pink noise -62 dBFS как floor)
-      3. Новый блок:            cosine fade 0→1
+    equal_power=False (default): fade-through-silence — best for large carrier jumps.
+    equal_power=True + silence_s=0: overlapping equal-power XF for same-carrier continuity.
 
-    silence_s=0.5  — оптимум для смены несущих.
-    silence_s=0.2  — для pattern_break (короткий, уже есть 20s паузы).
+    silence_s=0.5  — carrier change reset
+    silence_s=0.0  — seamless join (with equal_power for rest profiles)
     """
     fn = min(int(fade_s * SR), len(new_L) // 4)
     sn = int(silence_s * SR)
 
     if fn < 2 or prev_tail is None:
-        # Первый блок — только fade-in
         _, fade_in = _cosine_fade(fn)
         new_L = new_L.copy(); new_R = new_R.copy()
         new_L[:fn] *= fade_in;  new_R[:fn] *= fade_in
@@ -122,19 +120,31 @@ def crossfade_write(fh, prev_tail, new_L, new_R,
     fn = min(fn, len(pL), len(new_L))
 
     fade_out, fade_in = _cosine_fade(fn)
+    new_L = new_L.copy(); new_R = new_R.copy()
 
-    # 1. Хвост: плавное затухание
+    if equal_power and sn == 0:
+        # Equal-power overlap: sqrt curves keep constant energy through join
+        t = np.linspace(0.0, 1.0, fn, dtype=np.float32)
+        eo = np.sqrt(np.clip(1.0 - t, 0.0, 1.0)).astype(np.float32)
+        ei = np.sqrt(np.clip(t, 0.0, 1.0)).astype(np.float32)
+        mix_L = (pL[-fn:] * eo + new_L[:fn] * ei).astype(np.float32)
+        mix_R = (pR[-fn:] * eo + new_R[:fn] * ei).astype(np.float32)
+        fh.write(np.stack([mix_L, mix_R], axis=1))
+        body_L = new_L[fn:-fn] if len(new_L) > 2 * fn else np.array([], np.float32)
+        body_R = new_R[fn:-fn] if len(new_R) > 2 * fn else np.array([], np.float32)
+        if len(body_L):
+            fh.write(np.stack([body_L, body_R], axis=1))
+        return new_L[-fn:].copy(), new_R[-fn:].copy()
+
+    # Fade-through-silence path
     tL = (pL[-fn:] * fade_out).astype(np.float32)
     tR = (pR[-fn:] * fade_out).astype(np.float32)
     fh.write(np.stack([tL, tR], axis=1))
 
-    # 2. Тишина + pink noise -62 dBFS (floor маскирует абсолютную тишину)
     if sn > 0:
         nz  = pink_noise(sn, seed=int(fade_s * 1000) % 65535) * 0.0008
         fh.write(np.stack([nz, nz], axis=1))
 
-    # 3. Нарастание нового блока
-    new_L = new_L.copy(); new_R = new_R.copy()
     new_L[:fn] *= fade_in;  new_R[:fn] *= fade_in
 
     body_L = new_L[fn:-fn] if len(new_L) > 2 * fn else np.array([], np.float32)

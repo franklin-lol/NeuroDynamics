@@ -1,31 +1,35 @@
 # NeuroDynamics Roadmap
 
-Стратегический план развития экосистемы высокотехнологичного психоакустического ПО.
+Стратегический план развития open-loop психоакустического генератора.
 
 ## [DONE] Phase: GENESIS (Organic & Scientific)
-*   **Core Engine:** Разработка ядра `psychoacoustic/` с поддержкой 4 тембральных режимов.
-*   **Spatial Model:** Интеграция аналитической модели HRTF Брауна-Дуды и задержек Woodworth ITD.
-*   **Chaos Dynamics:** Реализация стабилизированного аттрактора Лоренца (0.5–3 Hz) для деактивации DMN.
-*   **Geometry:** Слой Phi-пропорций (1.618) для снижения когнитивного сопротивления.
-*   **Smart Rendering:** Автоматическая генерация CUE-sheets и рендеринг в PCM-24.
-*   **Interactive CLI:** Полнофункциональный Dashboard для управления генерацией.
+*   **Core Engine:** `psychoacoustic/` — 4+ тембральных режима.
+*   **Spatial Model:** аналитический HRTF Brown–Duda + Woodworth ITD.
+*   **Chaos Dynamics:** Lorenz-jitter биения (0.5–3 Hz).
+*   **Geometry:** φ-слой.
+*   **Smart Rendering:** CUE + PCM-24 FLAC.
+*   **Interactive CLI:** Dashboard генерации.
 
 ## [DONE] Phase: ATMOSPHERE (Texture & Synthesis)
-*   **Granular Engine:** Стохастический синтез зернистых облаков (granular clouds) для создания живых органических текстур.
-*   **Spectral Morphing:** Плавные переходы между тембральными состояниями через STFT Overlap-Add интерполяцию.
-*   **Loudness Optimization:** Пересмотр системы нормализации (-3.1 dBFS) и внедрение `block_gain` для комфортного прослушивания.
+*   **Granular Engine:** стохастические облака.
+*   **Loudness / Comfort:** block_gain + Comfort EQ.
+
+## [DONE] Phase: PERMANENT (God-Tier Polish v0.3)
+*   **Soft-gate v2 / soft ceiling / AM budget** — permanent listening.
+*   **Sweep-locked monaural + FocusMix** — iAwaken/Monroe-inspired layering.
+*   **Equal-power continuity + underbed + structured quiet.**
+*   **Dual-mode profiles:** permanent rest vs sharp-safe WARRIOR.
+*   **Honest science framing** in README (hypotheses, not clinical claims).
 
 ## [PLANNED] Phase: NEUROSYNC (Biofeedback & Adaptation)
-*   **EEG Integration:** Поддержка OpenBCI и Muse для сбора данных в реальном времени.
-*   **Adaptive Entrainment:** Динамическая подстройка частоты биений под текущий ритм мозга пользователя.
-*   **Neural Fingerprinting:** Генерация уникальных сессий на основе спектрального анализа ЭЭГ.
+*   **EEG Integration:** OpenBCI / Muse (closed-loop).
+*   **Adaptive Entrainment:** подстройка биений под измеренный ритм.
+*   **Neural Fingerprinting:** персональные пресеты по спектральному анализу.
 
 ## [PLANNED] Phase: ATMOSPHERE (Advanced)
-*   **Field Recordings:** Интеграция алгоритмически обработанных природных ландшафтов.
-*   **Spectral Morphing (Advanced):** Более сложные алгоритмы морфинга для нелинейных переходов.
+*   **Field Recordings:** обработанные природные текстуры.
+*   **Spectral Morphing (Advanced):** нелинейные переходы без фазовой отмены.
 
 ## [PLANNED] Phase: ECOSYSTEM (Platform Expansion)
-*   **Web Renderer:** Портирование ядра на WebAudio + WebAssembly для запуска в браузере.
-*   **Mobile App:** Нативное приложение (Flutter/Compose) с локальным рендерингом.
-*   **VST/AU Plugin:** Интеграция движка в DAW для профессиональной работы со звуком.
-*   **API Service:** Облачный рендеринг сессий и хранилище пресетов.
+*   **Web Renderer:** WebAudio + WASM.
+*   **Mobile App / VST / API Service.**

@@ -4,63 +4,67 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Tests-Passed-brightgreen" alt="Tests Passed">
-  <img src="https://img.shields.io/badge/Phase-Atmosphere_v0.2-gold" alt="Phase">
+  <img src="https://img.shields.io/badge/Phase-Permanent_v0.3-gold" alt="Phase">
 </p>
 
 ---
 
-**NeuroDynamics Suite** — высокотехнологичный программный комплекс для генерации нейроакустических сессий и исследования глубоких состояний сознания. Проект представляет собой конвергенцию передовых психоакустических протоколов, математического моделирования и художественного саунд-дизайна.
+**NeuroDynamics Suite** — open-loop генератор нейроакустических сессий: бинауральные/монауральные биения, isochronic layers, пространственная модель и органический саунд-дизайн. Personal product-ready CLI → FLAC 24-bit / 44.1 kHz + CUE + session map.
 
-## Научный фундамент
-NeuroDynamics Suite оперирует на стыке нейробиологии и акустики, используя механизмы **Neural Entrainment** для управления нейронной активностью:
-*   **DMN Deactivation:** Применение хаотических аттракторов Лоренца для временной деактивации Default Mode Network (сети пассивного режима мозга).
-*   **Hippocampal Coupling:** Реализация CFC (Cross-Frequency Coupling), где гамма-ритмы модулируются фазой тета-волн, имитируя естественные паттерны обработки информации.
-*   **Coherence Optimization:** Использование частот золотого сечения (φ=1.618) для создания гармонических структур с минимальным когнитивным сопротивлением.
-*   **Respiratory Entrainment:** Ультра-медленная амплитудная модуляция (4–6 BPM), синхронизированная с ритмом дыхания для входа в состояние когерентности HRV.
+## Что делает движок (факт)
 
-## Технологическое ядро
+*   **Binaural beats** с log-sweep носителя и частоты биения; опционально второй FocusMix-слой (body + cortex).
+*   **Monaural AM**, синхронизированный со sweep бинаурала (двойной pathway).
+*   **Isochronic soft-gate v2** + ASSR-80 с усиленным сглаживанием (меньше roughness).
+*   **Open-loop дыхательная AM** (4–6 BPM, ramp, exhale bias) — без датчиков.
+*   **HRTF** (аналитика Brown–Duda / Woodworth), Schumann stack, Lorenz-jitter биения, φ-layer, granular, formant, soft tube, reverb.
+*   **Master chain:** pre-norm → Comfort EQ → soft ceiling → `block_gain`; continuous underbed; equal-power crossfade на близких несущих; structured quiet перед void/OBE.
 
-### 1. Multi-Pathway Sound Engine
-Система воздействует на мозг через три независимых и дополняющих друг друга канала:
-*   **Binaural Beats:** Прецизионный фазовый сдвиг в HRTF-пространстве для воздействия на кору.
-*   **Monaural Beats:** Прямая амплитудная модуляция (AM) несущей для влияния на стволовые структуры (эффективно даже без наушников).
-*   **Isochronic Priming:** Начальные гамма-вспышки (FFR prime burst) для "разогрева" мозга перед погружением.
+## Научная рамка (честно)
 
-### 2. Organic Synthesis & DSP
-Движок уходит от "стерильных" осцилляторов в сторону живого, органического звучания:
-*   **Formant Resonator:** Банк адаптивных фильтров, имитирующих формантную структуру человеческого голоса.
-*   **Tube Saturation:** Мягкое аналоговое насыщение (arctan soft-clip), добавляющее теплоту и четные гармоники.
-*   **Synthetic Room Reverb:** Декоррелированная пространственная реверберация для создания эффекта бесконечного объема.
-*   **4 Synthesis Modes:** Warm (FM), Rich (Additive), Soft (Pure), Organ (Drawbar).
+Проект **вдохновлён** литературой по FFR / binaural beats, практиками в духе Monroe Hemi-Sync / Gateway Focus-лестницы и многослойным стеком (binaural + monaural + isochronic + beds). Это **не** клинически валидированный протокол и **не** доказательство изменения DMN, гиппокампального CFC или HRV.
 
-### 3. Scientific Spatial Model (3D)
-*   **Brown-Duda HRTF:** Физически корректная Head-Related Transfer Function.
-*   **Woodworth ITD:** Расчет межушных временных задержек для формирования точного азимута.
-*   **Lissajous Orbital:** Алгоритмическое движение источников по 3D-траекториям для предотвращения адаптации.
+| В коде | Корректная формулировка |
+|--------|-------------------------|
+| Lorenz на beat envelope | Детерминированный jitter частоты биения (~0.5–3 Hz), гипотеза «менее предсказуемого» паттерна |
+| `apply_cfc` | Амплитудная модуляция gamma-слоя тета-синусом (упрощённый open-loop PAC), не измеренный hippocampal CFC |
+| Respiratory AM | Фиксированный/рамповый open-loop pacing; не closed-loop HRV |
+| φ-layer | Гармонический / геометрический слой носителя и биения |
+| FocusMix | Dual-frequency stacking по мотивам Focus-10 (тело/delta + кора/alpha-beta), без EEG-подтверждения |
+
+Эффекты субъективны. Для бинаурала нужны **проводные** стерео-наушники. Рекомендуемая громкость **15–30%**. Не медицинское изделие.
+
+## Dual-mode профили
+
+| Режим | Профили | Характер |
+|-------|---------|----------|
+| **Permanent** | GENESIS, WALK, SLEEP, HEALER, ORACLE | ComfortEQ, мягкие iso/ASSR, quiet voids, breath ramps |
+| **Sharp-safe** | WARRIOR | Выше энергия gamma/ASSR, soft-gate + ceiling, ComfortEQ только на descent |
 
 ## Архитектура сессий
+
 <p align="center">
   <img src="assets/session_flow.svg" width="800" alt="Neural Flow Visualization">
 </p>
 
-Каждая сессия — это математически выверенное путешествие:
-1.  **FFR Prime:** Гамма-прайминг для настройки нейронного отклика.
-2.  **Ignition:** Захват внимания и синхронизация с внешним ритмом.
-3.  **Transition:** Бесшовный переход через тишину (Professional Crossfade) к более глубоким состояниям.
-4.  **Void Core:** Максимальная глубина (Theta/Delta) с активной респираторной модуляцией.
-5.  **Integration:** Мягкий возврат и фиксация состояния (Beta-lock).
+1. Soft FFR prime → фазы профиля → ambient bridges после длинных блоков  
+2. Structured quiet перед void/OBE (Gateway-style internalization)  
+3. Equal-power XF внутри одной несущей; fade-through-silence при большом скачке carrier  
 
 ## Протокол использования
-*   **Оборудование:** Только проводные наушники. Bluetooth разрушает фазовую целостность сигнала.
-*   **Громкость:** 15–30%. Звук должен быть комфортным и не навязчивым.
-*   **Положение:** Лежа или полулежа, глаза закрыты.
-*   **Регулярность:** Рекомендуемый цикл — не чаще одного раза в 48 часов.
+
+*   **Оборудование:** только проводные наушники.  
+*   **Громкость:** 15–30%. Звук должен оставаться комфортным часами (permanent).  
+*   **Положение:** лёжа / полулёжа (SLEEP/HEALER/ORACLE); WARRIOR — сидя/стоя.  
+*   **Регулярность:** не чаще одного раза в 48 часов для глубоких профилей.
 
 ## Структура проекта
-*   **`psychoacoustic/`**: Ядро обработки сигналов и математических моделей.
-*   **`genesis_generator.py`**: Интерактивный терминальный интерфейс управления.
-*   **`renderer.py`**: Высокоточный рендеринг в FLAC 24-bit / 44.1kHz.
-*   **`tests/`**: Набор автоматизированных тестов (Pytest) для контроля качества DSP.
+
+*   **`psychoacoustic/`** — DSP-ядро  
+*   **`genesis_generator.py`** — TUI  
+*   **`tests/`** — Pytest (DSP hygiene + profile smoke)  
+
+`legacy_archive/` — личная история; не часть активного продукта.
 
 ---
 **Author:** franklin-sys  

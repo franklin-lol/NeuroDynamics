@@ -126,19 +126,29 @@ def room_reverb(L: np.ndarray, R: np.ndarray,
 
 
 # ══════════════════════════════════════════════════════════
-#  MONAURAL BEAT LAYER
+#  MONAURAL BEAT LAYER  — sweep-locked to binaural B_raw
 # ══════════════════════════════════════════════════════════
 
 def monaural_beat_layer(dur_s: float, carrier: float,
-                        beat_freq: float,
+                        beat_freq: float = 0.0,
                         vol: float = 0.05,
                         ctype: str = 'warm',
-                        seed: int  = 0) -> np.ndarray:
+                        seed: int  = 0,
+                        beat_array=None) -> np.ndarray:
+    """AM carrier locked to beat envelope (follows binaural sweep when beat_array set)."""
     n  = int(dur_s * SR)
     t  = np.arange(n, dtype=np.float64) / SR
     ph = 2.0 * np.pi * carrier * t
     carrier_sig = _apply_carrier_type(ph, ctype).astype(np.float64)
-    am  = 0.5 + 0.5 * np.cos(2.0 * np.pi * beat_freq * t)
+    if beat_array is not None:
+        B = np.asarray(beat_array[:n], dtype=np.float64)
+        if len(B) < n:
+            B = np.pad(B, (0, n - len(B)), mode='edge')
+        phase = 2.0 * np.pi * np.cumsum(B) / SR
+        am = 0.5 + 0.5 * np.cos(phase)
+    else:
+        bf = beat_freq if beat_freq > 0 else 10.0
+        am = 0.5 + 0.5 * np.cos(2.0 * np.pi * bf * t)
     env = np.ones(n, np.float32)
     rn  = min(int(8.0 * SR), n // 4)
     if rn > 1:
@@ -148,22 +158,106 @@ def monaural_beat_layer(dur_s: float, carrier: float,
 
 
 # ══════════════════════════════════════════════════════════
-#  RESPIRATORY ENTRAINMENT
+#  FOCUS MIX  — dual-frequency open-loop (Monroe-style F10 idea)
+#  Body/delta-ish pair + cortex/alpha-beta pair, subliminal vols.
+# ══════════════════════════════════════════════════════════
+
+def focus_mix_layer(dur_s: float, carrier: float,
+                    body_beat: float = 2.0,
+                    cortex_beat: float = 10.0,
+                    vol_body: float = 0.08,
+                    vol_cortex: float = 0.06,
+                    ctype: str = 'soft',
+                    seed: int = 0) -> tuple:
+    """Second binaural pair stack: body (low) + cortex (higher) Focus-style mix."""
+    Lb, Rb = dual_binaural(dur_s, carrier, carrier, body_beat, body_beat,
+                           vol_p=vol_body, vol_s=vol_body * 0.22,
+                           carrier_jitter=0.8, beat_jitter=0.04,
+                           seed=seed, carrier_type=ctype)
+    Lc, Rc = dual_binaural(dur_s, carrier * 1.02, carrier * 1.02,
+                           cortex_beat, cortex_beat,
+                           vol_p=vol_cortex, vol_s=vol_cortex * 0.20,
+                           carrier_jitter=0.6, beat_jitter=0.04,
+                           seed=seed + 11, carrier_type=ctype)
+    return (Lb + Lc).astype(np.float32), (Rb + Rc).astype(np.float32)
+
+
+# ══════════════════════════════════════════════════════════
+#  RESPIRATORY ENTRAINMENT  — ramp + 35:65 exhale bias
 # ══════════════════════════════════════════════════════════
 
 def respiratory_entrainment_mod(dur_s: float,
                                 breath_bpm: float = 6.0,
-                                depth: float      = 0.15) -> np.ndarray:
+                                depth: float      = 0.15,
+                                breath_bpm_end: float = None) -> np.ndarray:
+    """
+    Open-loop breathing AM. Optional linear bpm ramp (breath_bpm → breath_bpm_end).
+    Asymmetry ≈35% inhale / 65% exhale for vagal bias.
+    """
     n    = int(dur_s * SR)
     t    = np.arange(n, dtype=np.float64) / SR
-    freq = breath_bpm / 60.0
-    phase = 2.0 * np.pi * freq * t
+    if breath_bpm_end is not None and abs(breath_bpm_end - breath_bpm) > 1e-6:
+        bpm = np.linspace(breath_bpm, breath_bpm_end, n, dtype=np.float64)
+        freq = bpm / 60.0
+        phase = 2.0 * np.pi * np.cumsum(freq) / SR
+    else:
+        freq = breath_bpm / 60.0
+        phase = 2.0 * np.pi * freq * t
     raw   = 0.5 + 0.5 * np.sin(phase - np.pi / 2)
+    # Stronger exhale bias (was 40:60-ish; now ~35:65)
     asym  = np.where(raw > 0.5,
-                     0.5 + (raw - 0.5) * 1.20,
-                     raw * 0.80)
+                     0.5 + (raw - 0.5) * 1.05,
+                     raw * 0.70)
     asym  = np.clip(asym, 0.0, 1.0).astype(np.float32)
     return (1.0 - depth + depth * asym).astype(np.float32)
+
+
+# ══════════════════════════════════════════════════════════
+#  AM DEPTH BUDGET  — prevent stacked envelope pumping
+# ══════════════════════════════════════════════════════════
+
+def budget_am_depths(*depths: float, cap: float = 0.26) -> list:
+    """Scale AM depths so sum(depths) <= cap while preserving ratios."""
+    vals = [max(0.0, float(d)) for d in depths]
+    total = sum(vals)
+    if total <= cap or total < 1e-12:
+        return vals
+    scale = cap / total
+    return [v * scale for v in vals]
+
+
+def soft_ceiling(L: np.ndarray, R: np.ndarray,
+                 ceiling: float = 0.50,
+                 knee: float = 0.08) -> tuple:
+    """
+    Soft-knee peak ceiling (lookahead-free). Compresses peaks above (ceiling-knee)
+    toward ceiling without hard clipping. Preserves relative L/R for binaural.
+    """
+    peak = max(float(np.max(np.abs(L))), float(np.max(np.abs(R)))) + 1e-9
+    if peak <= ceiling - knee:
+        return L.astype(np.float32), R.astype(np.float32)
+    # Soft scale: map peak → ceiling with gentle knee
+    if peak <= ceiling:
+        # already under hard ceiling — mild soft compression only
+        return L.astype(np.float32), R.astype(np.float32)
+    # Scale so peak lands at ceiling * 0.98
+    scale = (ceiling * 0.98) / peak
+    # Soften transition: blend toward scale when over
+    return (L * scale).astype(np.float32), (R * scale).astype(np.float32)
+
+
+# ══════════════════════════════════════════════════════════
+#  UNDERBED — continuous pink/brown floor for session continuity
+# ══════════════════════════════════════════════════════════
+
+def underbed_noise(dur_s: float, vol: float = 0.018,
+                   pink_w: float = 0.65, brown_w: float = 0.35,
+                   seed: int = 0) -> np.ndarray:
+    """Quiet morph noise bed (~ -35 dBFS at vol=0.018)."""
+    from .core import morph_noise
+    n = int(dur_s * SR)
+    nz = morph_noise(n, pink_w, brown_w, seed)
+    return (nz * vol).astype(np.float32)
 
 
 # ══════════════════════════════════════════════════════════
@@ -267,30 +361,34 @@ def dual_binaural(dur_s, c0, c1, b0, b1,
 
 
 # ══════════════════════════════════════════════════════════
-#  ISOCHRONIC
+#  ISOCHRONIC  — soft-gate v2 (permanent-safe)
 #
-#  FIX: адаптивное сглаживание gate по частоте.
-#  Старое: 6ms для всех — при 40 Hz период=25ms, полупериод=12.5ms,
-#          6ms window < 50% half-period → клики/buzz слышимы.
-#  Новое:  18ms для gamma (≥30 Hz) — полностью покрывает gate edge,
-#          12ms для beta (15-30 Hz), 8ms для alpha/theta.
+#  v1: 18/12/8 ms — reduced clicks
+#  v2: 26/16/10 ms (+ ASSR-80 uses 32 ms) — minimize roughness
+#      (modulation 20–80 Hz is the main permanent-listening killer)
 # ══════════════════════════════════════════════════════════
 
 def isochronic(dur_s, freq, carrier=200.0, vol=0.14,
-               attack_s=4.0, decay_s=4.0, carrier_type='sine'):
+               attack_s=4.0, decay_s=4.0, carrier_type='sine',
+               smooth_ms: float = None):
     if freq <= 0:
         return np.zeros(int(dur_s * SR), dtype=np.float32)
     n    = int(dur_s * SR)
     t    = np.arange(n, dtype=np.float64) / SR
-    gate = (np.sin(2 * np.pi * freq * t) >= 0).astype(np.float32)
+    # Raised-cosine gate (softer than hard square before smoothing)
+    gate = (0.5 + 0.5 * np.sin(2 * np.pi * freq * t)).astype(np.float32)
+    gate = (gate >= 0.5).astype(np.float32)
 
-    # Adaptive gate smoothing — eliminates harsh buzzing from fast gates
-    if freq >= 30.0:
-        rn = int(0.018 * SR)   # 18ms: gamma (period=25ms, covers full transition)
+    if smooth_ms is not None:
+        rn = int(smooth_ms * 0.001 * SR)
+    elif freq >= 60.0:
+        rn = int(0.032 * SR)   # 32ms: ASSR-80 / ultrasonic roughness band
+    elif freq >= 30.0:
+        rn = int(0.026 * SR)   # 26ms: gamma
     elif freq >= 15.0:
-        rn = int(0.012 * SR)   # 12ms: beta
+        rn = int(0.016 * SR)   # 16ms: beta
     else:
-        rn = int(0.008 * SR)   # 8ms:  alpha/theta
+        rn = int(0.010 * SR)   # 10ms: alpha/theta
 
     if rn > 1:
         h = np.hanning(rn * 2).astype(np.float32); h /= h.sum()
@@ -307,12 +405,15 @@ def isochronic(dur_s, freq, carrier=200.0, vol=0.14,
 def apply_cfc(gamma_sig, dur_s, theta_freq=6.0, strength=0.5):
     n   = len(gamma_sig)
     t   = np.arange(n, dtype=np.float64) / SR
+    # Cap CFC strength contribution to roughness
+    strength = min(float(strength), 0.55)
     env = 1.0 - strength + strength * (0.5 - 0.5 * np.sin(2 * np.pi * theta_freq * t))
     return (gamma_sig * env.astype(np.float32))
 
 
 def assr_80hz(dur_s, carrier=200.0, vol=0.05):
-    return isochronic(dur_s, 80.0, carrier, vol, attack_s=6.0, decay_s=6.0)
+    return isochronic(dur_s, 80.0, carrier, vol,
+                      attack_s=8.0, decay_s=8.0, smooth_ms=32.0)
 
 
 # ══════════════════════════════════════════════════════════
@@ -422,26 +523,39 @@ def pattern_break(carrier=432.0, carrier_type='sine'):
 
 
 # ══════════════════════════════════════════════════════════
-#  FFR PRIME BURST
+#  FFR PRIME BURST  — soft, subliminal warm-up (~−13 dBFS)
 # ══════════════════════════════════════════════════════════
 
 def ffr_prime_burst(carrier: float = 200.0,
-                    carrier_type: str = 'warm',
-                    dur_s: float = 18.0) -> tuple:
-    iso = isochronic(dur_s, 40.0, carrier, vol=0.10,
-                     attack_s=4.0, decay_s=5.0, carrier_type=carrier_type)
+                    carrier_type: str = 'soft',
+                    dur_s: float = 20.0) -> tuple:
+    ctype = carrier_type if carrier_type != 'sine' else 'soft'
+    iso = isochronic(dur_s, 40.0, carrier, vol=0.055,
+                     attack_s=6.0, decay_s=7.0, carrier_type=ctype,
+                     smooth_ms=28.0)
     L_b, R_b = dual_binaural(dur_s, carrier, carrier, 40.0, 40.0,
-                              vol_p=0.25, vol_s=0.08,
-                              carrier_jitter=0.0, beat_jitter=0.0,
-                              seed=7777, carrier_type=carrier_type)
-    L = (L_b + iso).astype(np.float32)
-    R = (R_b + iso).astype(np.float32)
-    fn   = min(int(4 * SR), len(L) // 4)
+                              vol_p=0.14, vol_s=0.045,
+                              carrier_jitter=0.5, beat_jitter=0.0,
+                              seed=7777, carrier_type=ctype)
+    bed = underbed_noise(dur_s, vol=0.022, seed=7778)
+    L = (L_b + iso + bed).astype(np.float32)
+    R = (R_b + iso + bed).astype(np.float32)
+    fn   = min(int(7 * SR), len(L) // 3)
     ramp = np.linspace(0, 1, fn, np.float32)
     L[:fn] *= ramp;  R[:fn] *= ramp
     L[-fn:] *= ramp[::-1]; R[-fn:] *= ramp[::-1]
-    pk = max(np.max(np.abs(L)), np.max(np.abs(R))) + 1e-9
-    if pk > 0.56:
-        L = (L / pk * 0.50).astype(np.float32)
-        R = (R / pk * 0.50).astype(np.float32)
+    # Target ≈ −13 dBFS (~0.224 FS)
+    L, R = soft_ceiling(L, R, ceiling=0.224, knee=0.04)
     return L, R
+
+
+def structured_quiet(dur_s: float = 60.0, vol: float = 0.012,
+                     seed: int = 0) -> tuple:
+    """Gateway-style internalization: near-silence with underbed only."""
+    bed = underbed_noise(dur_s, vol=vol, pink_w=0.55, brown_w=0.45, seed=seed)
+    fn = min(int(5.0 * SR), len(bed) // 4)
+    ramp = np.linspace(0, 1, fn, np.float32)
+    bed = bed.copy()
+    bed[:fn] *= ramp
+    bed[-fn:] *= ramp[::-1]
+    return bed.astype(np.float32), bed.astype(np.float32)

@@ -4,7 +4,7 @@ import os, sys, time
 from typing import List, Callable, Optional
 from .block import Block
 from .core  import SR, crossfade_write
-from .dsp   import pattern_break, ffr_prime_burst, ambient_bridge
+from .dsp   import ffr_prime_burst, ambient_bridge, structured_quiet
 
 
 # ══════════════════════════════════════════════════════════
@@ -18,6 +18,11 @@ def _sec_to_cue(seconds: float) -> str:
     ss  = (total_frames // 75) % 60
     mm  = total_frames // 75 // 60
     return f"{mm:02d}:{ss:02d}:{ff:02d}"
+
+
+def _carrier_jump(prev: Block, cur: Block, thresh_hz: float = 40.0) -> bool:
+    """True when carriers differ enough to need fade-through-silence."""
+    return abs(float(prev.c1) - float(cur.c0)) > thresh_hz
 
 
 def export_cue(blocks: List[Block], out_path: str, flac_filename: str,
@@ -38,6 +43,8 @@ def export_cue(blocks: List[Block], out_path: str, flac_filename: str,
     t     = 0.0
     track = 1
     for i, b in enumerate(blocks):
+        if getattr(b, 'quiet_before_s', 0) and b.quiet_before_s > 0:
+            t += float(b.quiet_before_s)
         lines.append(f'  TRACK {track:02d} AUDIO')
         lines.append(f'    TITLE "{b.label}"')
         lines.append(f'    PERFORMER "{artist}"')
@@ -45,7 +52,7 @@ def export_cue(blocks: List[Block], out_path: str, flac_filename: str,
         track += 1
         t += b.dur_s
         if i in BREAK_AFTER:
-            t += 20.0   # pattern break
+            t += 20.0
 
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')
@@ -62,9 +69,14 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
     BREAK_AFTER.add(0)
 
     lines = ["═" * 72,
-             f"  GENESIS — SESSION MAP  |  Profile: {profile}", "═" * 72, ""]
+             f"  NEURODYNAMICS — SESSION MAP  |  Profile: {profile}", "═" * 72, ""]
     t = 0.0
     for i, b in enumerate(blocks):
+        if getattr(b, 'quiet_before_s', 0) and b.quiet_before_s > 0:
+            lines.append(f"  [··]  STRUCTURED QUIET  {b.quiet_before_s:.0f}s")
+            lines.append(f"        {t/60:.2f} → {(t+b.quiet_before_s)/60:.2f} min")
+            lines.append("")
+            t += float(b.quiet_before_s)
         end = t + b.dur_s
         lines.append(f"  [{i+1:02d}]  {b.label}")
         lines.append(f"        {t/60:.2f} → {end/60:.2f} min")
@@ -92,7 +104,14 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
         if b.use_formant:     flags.append(f"Formant intensity={b.formant_intensity}")
         if b.use_saturate:    flags.append(f"Saturate drive={b.saturate_drive}")
         if b.use_reverb:      flags.append(f"Reverb wet={b.reverb_wet} rt60={b.reverb_rt60}")
-        if b.use_respiratory: flags.append(f"Resp bpm={b.breath_bpm} d={b.breath_depth}")
+        if b.use_respiratory:
+            end_bpm = getattr(b, 'breath_bpm_end', None)
+            bpm_s = f"{b.breath_bpm}"
+            if end_bpm: bpm_s += f"→{end_bpm}"
+            flags.append(f"Resp bpm={bpm_s} d={b.breath_depth}")
+        if getattr(b, 'use_focus_mix', False):
+            flags.append(f"FocusMix body={b.focus_body_beat} cortex={b.focus_cortex_beat}")
+        if b.use_comfort_eq:  flags.append("ComfortEQ")
         if flags:
             lines.append("        " + "  ·  ".join(flags))
         lines.append("")
@@ -103,22 +122,11 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
     lines += ["═" * 72,
               "  LAYER LEGEND",
               "  carrier:  sine|warm(FM β=0.28)|rich(5harm)|soft|organ",
-              "  drone:    detuned 3-voice pad с micro-LFO детюнингом",
-              "  wind:     розовый шум → узкополосный BP @ carrier freq",
-              "  lfo-filt: медленный LP-sweep → живое дыхание сигнала",
-              "  CFC:      theta→gamma PAC (hippocampal coupling)",
-              "  ASSR-80:  brainstem 80Hz pathway",
-              "  Lorenz:   детерминированный хаос (solve_ivp RK45), t-scale фиксирован",
-              "  HRTF:     Brown-Duda spherical head (Woodworth ITD + IIR ILD)",
-              "  3D-orbit: azimuth circle + elevation Lissajous",
-              "  Infra:    ultra-slow AM → ANS sync",
-              "  MonoBeat: monaural AM pathway (brainstem)",
-              "  Formant:  F1/F2/F3 vocal resonator",
-              "  Saturate: arctan tube-warmth (soft-clip)",
-              "  Reverb:   synthetic IR room reverb",
-              "  Resp:     respiratory-sync AM (HRV coherence)",
-              "  SR noise: stochastic-resonance optimal (15% signal RMS)",
-              "  order:    spatial→infra→Resp→HRTF→Reverb→normalize",
+              "  MonoBeat: monaural AM locked to binaural sweep",
+              "  FocusMix: dual-frequency open-loop (body+cortex)",
+              "  ComfortEQ→soft ceiling→block_gain master chain",
+              "  Resp:     open-loop respiratory AM (optional bpm ramp)",
+              "  Quiet:    structured near-silence before void/OBE",
               "═" * 72]
 
     with open(out_path, 'w', encoding='utf-8') as f:
@@ -126,13 +134,20 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
     print(f"  Map  → {out_path}")
 
 
+def estimate_session_duration(blocks: List[Block],
+                              break_min_dur: float = 600.0,
+                              ffr_s: float = 20.0) -> float:
+    """Total rendered seconds including FFR, quiet, and ambient bridges."""
+    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
+    BREAK_AFTER.add(0)
+    total = ffr_s + sum(b.dur_s for b in blocks)
+    total += sum(float(getattr(b, 'quiet_before_s', 0) or 0) for b in blocks)
+    total += len(BREAK_AFTER) * 20.0
+    return total
+
+
 # ══════════════════════════════════════════════════════════
 #  RENDER ENGINE
-#
-#  progress_cb: Optional callback для UI-отображения прогресса.
-#  Сигнатура: progress_cb(block_idx: int, label: str,
-#                         pct: float, elapsed_s: float) -> None
-#  Если None — встроенный ASCII-бар.
 # ══════════════════════════════════════════════════════════
 
 def render_session(blocks: List[Block],
@@ -143,20 +158,16 @@ def render_session(blocks: List[Block],
                    break_min_dur: float = 600.0,
                    progress_cb:   Optional[Callable] = None):
     """
-    Рендерит блоки в FLAC PCM-24 с равномощными кросс-фейдами.
-    Автоматически генерирует .cue и _MAP.txt рядом с FLAC.
-
-    progress_cb(idx, label, pct, elapsed_s) вызывается перед каждым блоком.
-    Если не задан — выводит встроенный ASCII progress bar.
+    Рендерит блоки в FLAC PCM-24.
+    Same-carrier joins use equal-power crossfade (no silence).
+    Large carrier jumps keep fade-through-silence.
+    Inserts structured quiet when block.quiet_before_s > 0.
     """
     BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
     BREAK_AFTER.add(0)
 
-    total_core   = sum(b.dur_s for b in blocks)
-    total_breaks = len(BREAK_AFTER) * 20
-    total_s      = total_core + total_breaks
+    total_s = estimate_session_duration(blocks, break_min_dur=break_min_dur)
 
-    # CUE sheet рядом с FLAC
     cue_path = out_flac.replace('.flac', '.cue')
     export_cue(blocks, cue_path,
                flac_filename=os.path.basename(out_flac),
@@ -168,6 +179,7 @@ def render_session(blocks: List[Block],
     print(f"  → {out_flac}")
 
     t_start = time.time()
+    total_core = sum(b.dur_s for b in blocks)
 
     with sf.SoundFile(out_flac, 'w', samplerate=SR,
                       channels=2, format='FLAC', subtype='PCM_24') as fh:
@@ -180,46 +192,66 @@ def render_session(blocks: List[Block],
             pass
 
         prev_tail = None
+        prev_block = None
 
         for i, block in enumerate(blocks):
             done    = sum(b.dur_s for b in blocks[:i])
-            pct     = done / total_core * 100
+            pct     = done / total_core * 100 if total_core else 0
             elapsed = time.time() - t_start
 
             if progress_cb is not None:
-                # UI-режим: внешний callback рисует прогресс
                 progress_cb(i, block.label, pct, elapsed)
             else:
-                # Fallback: встроенный ASCII bar
                 bar = '█' * int(pct / 5) + '░' * (20 - int(pct / 5))
                 sys.stdout.write(
                     f"\r  [{bar}] {pct:4.0f}%  {block.label[:36]:<36s}")
                 sys.stdout.flush()
 
-            # ── FFR Prime Burst (только перед первым блоком)
             if i == 0:
                 pL, pR = ffr_prime_burst(carrier=block.c0,
                                          carrier_type=block.carrier_type)
                 prev_tail = crossfade_write(fh, None, pL, pR,
-                                            fade_s=4.0, silence_s=0.2)
+                                            fade_s=6.0, silence_s=0.0,
+                                            equal_power=False)
                 del pL, pR
+
+            # Structured quiet (Gateway internalization) before void/OBE
+            qb = float(getattr(block, 'quiet_before_s', 0) or 0)
+            if qb > 0:
+                qL, qR = structured_quiet(dur_s=qb, seed=i * 31 + 7)
+                prev_tail = crossfade_write(
+                    fh, prev_tail, qL, qR,
+                    fade_s=5.0, silence_s=0.0, equal_power=True)
+                del qL, qR
 
             L, R = block.render()
 
-            prev_tail = crossfade_write(fh, prev_tail, L, R,
-                                        fade_s=fade_s, silence_s=0.5)
+            if prev_block is None:
+                use_ep = False
+                sil = 0.2
+            elif _carrier_jump(prev_block, block):
+                use_ep = False
+                sil = 0.5
+            else:
+                use_ep = True
+                sil = 0.0
+
+            prev_tail = crossfade_write(
+                fh, prev_tail, L, R,
+                fade_s=fade_s, silence_s=sil, equal_power=use_ep)
             del L, R
+            prev_block = block
 
             if i in BREAK_AFTER:
                 bL, bR = ambient_bridge(carrier=float(block.c1),
                                         carrier_type='soft',
                                         dur_s=20.0,
                                         seed=i * 17 + 3)
-                prev_tail = crossfade_write(fh, prev_tail, bL, bR,
-                                            fade_s=6.0, silence_s=0.0)
+                prev_tail = crossfade_write(
+                    fh, prev_tail, bL, bR,
+                    fade_s=6.0, silence_s=0.0, equal_power=True)
                 del bL, bR
 
-        # Финальный fade-out
         if prev_tail and prev_tail[0] is not None and len(prev_tail[0]):
             tL, tR = prev_tail
             fn   = min(int(6 * SR), len(tL))
@@ -227,8 +259,6 @@ def render_session(blocks: List[Block],
             tL[-fn:] *= ramp; tR[-fn:] *= ramp
             fh.write(np.stack([tL, tR], axis=1))
 
-    size_mb = os.path.getsize(out_flac) / 1024 / 1024
-    if progress_cb is None:
-        print(f"\r  {'█'*20}  100%  "
-              f"{total_s/60:.1f} min | {size_mb:.1f} MB{' '*25}")
+    elapsed = time.time() - t_start
+    print(f"\n  Done in {elapsed:.1f}s → {out_flac}")
     return out_flac

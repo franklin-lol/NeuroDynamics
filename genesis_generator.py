@@ -94,13 +94,13 @@ PROFILES = [
     {
         'key':   'GENESIS',
         'title': 'GENESIS',
-        'time':  '63 мин',
+        'time':  '~65 мин',
         'glyph': '◈',
         'color': GOLD,
         'short': 'Полный спектр — флагманская сессия',
         'desc': [
             'Gamma ignition → Schumann → Theta → Void → Integration',
-            'Новое: Monaural · Formant · Saturate · Resp-sync · Prime',
+            'Permanent: soft-gate · FocusMix · quiet void · ComfortEQ',
             'Carrier cascade: 200→432→528→639→432→200 Hz',
         ],
         'protocol': [
@@ -112,13 +112,13 @@ PROFILES = [
     {
         'key':   'WALK',
         'title': 'ПРОГУЛКА',
-        'time':  '30 мин',
+        'time':  '~31 мин',
         'glyph': '◉',
         'color': TEAL,
         'short': 'Расширенное восприятие в движении',
         'desc': [
             'Alpha→Theta (12→7.5 Hz) · оператор-режим без транса',
-            'Новое: MonoBeat · Formant · Saturate · Reverb',
+            'Sweep-locked monaural · ComfortEQ · soft underbed',
             'Gamma-якорь держит ясность всю сессию',
         ],
         'protocol': [
@@ -129,14 +129,14 @@ PROFILES = [
     {
         'key':   'SLEEP',
         'title': 'СОН / ВЫХОД',
-        'time':  '90 мин',
+        'time':  '~91 мин',
         'glyph': '◌',
         'color': PURPLE,
         'short': 'Глубокий сон + 3 окна осознания (OBE)',
         'desc': [
-            'Descent → Deep delta → 3× gamma-spike trigger cycles',
-            'Новое: Respiratory 4bpm · Mono-OBE triggers',
-            'HRTF + Lorenz chaos в триггерных блоках',
+            'Descent → Deep delta → 3× soft gamma-window cycles',
+            'Structured quiet · breath ramp · FocusMix · ComfortEQ',
+            'HRTF + Lorenz в окнах (мягкий chaos depth)',
         ],
         'protocol': [
             'Лечь, глаза закрыты с первой секунды',
@@ -147,14 +147,14 @@ PROFILES = [
     {
         'key':   'HEALER',
         'title': 'ИСЦЕЛЕНИЕ',
-        'time':  '75 мин',
+        'time':  '~66 мин',
         'glyph': '◎',
         'color': GREEN,
         'short': 'Глубокая дельта · восстановление · 528 Hz',
         'desc': [
-            '528 Hz Solfeggio MI carrier на всей сессии',
-            'Новое: Formant-rich · Resp-sync 4bpm · Reverb',
-            'Двойной void-блок · максимальный CFC strength',
+            '528 Hz carrier · permanent void with FocusMix',
+            'Breath ramp 6→4 · quiet before voids · ComfortEQ',
+            'Двойной void · мягкий CFC (open-loop PAC)',
         ],
         'protocol': [
             'Можно полностью засыпать',
@@ -164,14 +164,14 @@ PROFILES = [
     {
         'key':   'ORACLE',
         'title': 'ОРАКУЛ',
-        'time':  '60 мин',
+        'time':  '~58 мин',
         'glyph': '◐',
         'color': CYAN,
         'short': 'Ясновидение · Шуман · тета-коридор',
         'desc': [
-            '432 Hz · все 5 резонансов Шумана одновременно',
-            'Новое: MonoBeat · Formant · Saturate · Resp-sync',
-            'Phase lock: дыхание = master clock всей сессии',
+            '432 Hz · Schumann stack (soft taper) · theta corridor',
+            'Vision quiet · FocusMix · ComfortEQ · breath ramp',
+            'Open-loop phase lock на infra (не биосенсор)',
         ],
         'protocol': [
             'Лечь, глаза закрыты · не пытаться "видеть"',
@@ -181,14 +181,14 @@ PROFILES = [
     {
         'key':   'WARRIOR',
         'title': 'ВОИН',
-        'time':  '50 мин',
+        'time':  '~51 мин',
         'glyph': '◆',
         'color': RED,
         'short': 'Beta/Gamma пик · полная активация',
         'desc': [
-            'Gamma (30–40 Hz) dominant · ASSR-80 на максимуме',
-            'Новое: Mono-gamma · Saturate · Activation-lock',
-            'Минимальная дельта · фокус на beta-lock финале',
+            'Sharp-safe: выше энергия, soft-gate + ceiling',
+            'Gamma/ASSR сильнее rest-профилей · без ComfortEQ на пике',
+            'Descent/Theta с ComfortEQ · безопасные атаки ≥5s',
         ],
         'protocol': [
             'Можно сидеть или стоять · не для сна',
