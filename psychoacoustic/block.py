@@ -68,12 +68,21 @@ class Block:
     monaural_beat_hz: float = 0.0     # 0.0 → lock to binaural sweep
     # ── FORMANT / SATURATION / REVERB
     use_formant:        bool  = False
-    formant_intensity:  float = 0.22
+    formant_intensity:  float = 0.18
+    formant_vowel:      str   = 'A'       # A|O|U|E|M
+    formant_morph_vowel: Optional[str] = None  # e.g. 'M' for AUM tail
+    formant_morph_s:    float = 0.0
     use_saturate:       bool  = False
     saturate_drive:     float = 0.10
     use_reverb:         bool  = False
     reverb_wet:         float = 0.10
     reverb_rt60:        float = 700.0
+    # ── Anti-sizzle / soft introductions
+    use_silk:           bool  = True   # LP anti-whistle (auto-stronger on high carriers)
+    silk_cutoff_hz:     float = 5200.0
+    allow_sharp_iso:    bool  = False  # True only for WARRIOR peak blocks
+    intro_fade_s:       float = 10.0   # cosine fade-in of whole block (0=off)
+    outro_fade_s:       float = 8.0
     # ── RESPIRATORY — optional bpm ramp via breath_bpm_end
     use_respiratory:    bool  = False
     breath_bpm:         float = 6.0
@@ -112,7 +121,7 @@ class Block:
                             tube_saturate, formant_resonator, room_reverb,
                             monaural_beat_layer, respiratory_entrainment_mod,
                             comfort_filter, soft_ceiling, budget_am_depths,
-                            underbed_noise, focus_mix_layer)
+                            underbed_noise, focus_mix_layer, silk_lowpass)
         from .chaos import chaos_modulate
         from .hrtf  import hrtf_externalize
         from .phi   import phi_beat_layer
@@ -225,9 +234,17 @@ class Block:
                                            beat_array=B_raw)
             L += mono; R += mono
 
-        # ── ISO layers + CFC
+        # ── ISO layers + CFC (soft min attack unless allow_sharp_iso)
         for (fv, cv, vv, atk, dec) in self.iso_layers:
-            sig = isochronic(self.dur_s, fv, cv, vv, atk, dec,
+            if not self.allow_sharp_iso:
+                floor = min(12.0, max(6.0, self.dur_s * 0.20))
+                atk = max(float(atk), floor)
+                dec = max(float(dec), floor * 0.75)
+            # High iso carriers whistle easily — cap carrier for gamma beds
+            cv_use = float(cv)
+            if fv >= 30.0 and cv_use > 220.0:
+                cv_use = 200.0
+            sig = isochronic(self.dur_s, fv, cv_use, vv, atk, dec,
                              carrier_type=self.carrier_type)
             if self.cfc_theta > 0 and fv >= 30.0:
                 sig = apply_cfc(sig, self.dur_s,
@@ -255,15 +272,34 @@ class Block:
             R = lfo_filter(R, self.lfo_fc, self.lfo_depth,
                            self.lfo_rate, self.seed + 801)
 
-        # ── Formant resonator
+        # ── Formant resonator (vowel + optional morph)
         if self.use_formant:
-            L = formant_resonator(L, self.formant_intensity)
-            R = formant_resonator(R, self.formant_intensity)
+            L = formant_resonator(
+                L, self.formant_intensity,
+                vowel=self.formant_vowel,
+                morph_vowel=self.formant_morph_vowel,
+                morph_s=self.formant_morph_s)
+            R = formant_resonator(
+                R, self.formant_intensity,
+                vowel=self.formant_vowel,
+                morph_vowel=self.formant_morph_vowel,
+                morph_s=self.formant_morph_s)
 
         # ── Tube saturation
         if self.use_saturate:
             L = tube_saturate(L, self.saturate_drive)
             R = tube_saturate(R, self.saturate_drive)
+
+        # ── Anti-sizzle silk (stronger on high carriers — chakra upper / organ)
+        if self.use_silk:
+            cut = self.silk_cutoff_hz
+            cmax = max(float(self.c0), float(self.c1))
+            if cmax >= 700:
+                cut = min(cut, 4200.0)
+            elif cmax >= 500:
+                cut = min(cut, 4800.0)
+            L = silk_lowpass(L, cut)
+            R = silk_lowpass(R, cut)
 
         # ── Calibrated SR-noise
         nz = calibrated_noise(L, R, self.noise_pw, self.noise_bw,
@@ -307,6 +343,23 @@ class Block:
                                rt60_ms=self.reverb_rt60,
                                wet=self.reverb_wet)
 
+        # ── Soft block intro/outro (prevents post-quiet "slam")
+        n = len(L)
+        if self.intro_fade_s > 0:
+            fn = min(int(self.intro_fade_s * SR), n // 3)
+            if fn > 2:
+                ramp = (0.5 - 0.5 * np.cos(
+                    np.linspace(0, np.pi, fn, dtype=np.float32))).astype(np.float32)
+                L[:fn] *= ramp
+                R[:fn] *= ramp
+        if self.outro_fade_s > 0:
+            fn = min(int(self.outro_fade_s * SR), n // 3)
+            if fn > 2:
+                ramp = (0.5 + 0.5 * np.cos(
+                    np.linspace(0, np.pi, fn, dtype=np.float32))).astype(np.float32)
+                L[-fn:] *= ramp
+                R[-fn:] *= ramp
+
         # ── Master chain: pre-norm → comfort EQ → soft ceiling → block_gain
         peak = max(np.max(np.abs(L)), np.max(np.abs(R))) + 1e-9
         if peak > 0.56:
@@ -314,7 +367,10 @@ class Block:
             R = (R / peak * 0.56).astype(np.float32)
 
         if self.use_comfort_eq:
-            L, R = comfort_filter(L, R)
+            # Stronger silk on high carriers
+            cmax = max(float(self.c0), float(self.c1))
+            hi_db = -4.5 if cmax >= 700 else (-3.5 if cmax >= 500 else -3.5)
+            L, R = comfort_filter(L, R, high_db=hi_db)
 
         L, R = soft_ceiling(L, R, ceiling=self.soft_ceiling_fs, knee=0.08)
 

@@ -31,6 +31,7 @@
 | Respiratory AM | Фиксированный/рамповый open-loop pacing; не closed-loop HRV |
 | φ-layer | Гармонический / геометрический слой носителя и биения |
 | FocusMix | Dual-frequency stacking по мотивам Focus-10 (тело/delta + кора/alpha-beta), без EEG-подтверждения |
+| `CHAKRA_ASCENT` 396–963 Hz | Нумерологическое соответствие (Puleo/Horowitz) + sound-healing традиция; не физическое свойство тканей/энергоцентров; символический/интенциональный слой |
 
 Эффекты субъективны. Для бинаурала нужны **проводные** стерео-наушники. Рекомендуемая громкость **15–30%**. Не медицинское изделие.
 
@@ -40,7 +41,8 @@
 |-------|---------|----------|
 | **Permanent** | GENESIS, WALK, SLEEP, HEALER, ORACLE | ComfortEQ, мягкие iso/ASSR, quiet voids, breath ramps |
 | **Sharp-safe** | WARRIOR | Выше энергия gamma/ASSR, soft-gate + ceiling, ComfortEQ только на descent |
-| **Gateway Edge** | GATEWAY_EDGE (~31 мин) | F10→F12→F15→interrupt→F21 touch→seal; редкий breakthrough |
+| **Gateway Edge** | GATEWAY_EDGE (~31 мин) | F10→F12→F15→soft interrupt→F21 touch→seal |
+| **Chakra** | CHAKRA_ASCENT (~37 мин) | 396→963 + elevation ladder + vowel formants (symbolic) |
 
 ## Архитектура сессий
 

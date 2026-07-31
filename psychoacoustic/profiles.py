@@ -25,10 +25,13 @@ def build_profile(name: str):
     elif n == 'WARRIOR':  return _warrior()
     elif n in ('GATEWAY_EDGE', 'GATEWAY', 'EDGE'):
         return _gateway_edge()
+    elif n in ('CHAKRA_ASCENT', 'CHAKRA', 'ASCENT'):
+        return _chakra_ascent()
     else:
         raise ValueError(
             f"Unknown profile '{name}'. "
-            f"Use: GENESIS WALK SLEEP HEALER ORACLE WARRIOR GATEWAY_EDGE")
+            f"Use: GENESIS WALK SLEEP HEALER ORACLE WARRIOR "
+            f"GATEWAY_EDGE CHAKRA_ASCENT")
 
 
 # ══════════════════════════════════════════════════════════
@@ -682,6 +685,8 @@ def _warrior():
               use_underbed=True, underbed_vol=0.010,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
+              allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              intro_fade_s=6.0,
               seed=91),
 
         Block(label='WARRIOR — PEAK', dur_s=600,
@@ -696,6 +701,8 @@ def _warrior():
               use_underbed=True, underbed_vol=0.010,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
+              allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              intro_fade_s=6.0,
               seed=92),
 
         Block(label='WARRIOR — DESCENT', dur_s=480,
@@ -735,6 +742,8 @@ def _warrior():
               use_saturate=True, saturate_drive=0.08,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
+              allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              intro_fade_s=6.0,
               seed=95),
 
         Block(label='WARRIOR — LOCK', dur_s=540,
@@ -747,9 +756,10 @@ def _warrior():
               use_saturate=True, saturate_drive=0.08,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
+              allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              intro_fade_s=6.0,
               seed=96),
     ]
-
 
 # ══════════════════════════════════════════════════════════
 #  GATEWAY EDGE — ~29–31 min
@@ -813,74 +823,81 @@ def _gateway_edge():
             label='EDGE — F15 NO-TIME', dur_s=480,
             c0=432, c1=432, b0=7.83, b1=1.5,
             carrier_type='soft',
-            carrier_jitter=2.2, beat_jitter=0.12,
+            carrier_jitter=2.0, beat_jitter=0.10,
             noise_pw=0.0, noise_bw=1.0,
-            iso_layers=[(4.5, 216, 0.055, 16, 20),
-                        (40.0, 180, 0.04, 20, 20)],
-            cfc_theta=5.0, cfc_strength=0.42,
+            iso_layers=[(4.5, 216, 0.045, 20, 24),
+                        (40.0, 200, 0.028, 24, 24)],
+            cfc_theta=5.0, cfc_strength=0.35,
             use_focus_mix=True,
             focus_body_beat=1.5, focus_cortex_beat=8.0,
-            focus_vol_body=0.07, focus_vol_cortex=0.045,
-            use_chaos=True, chaos_depth=0.14,
-            use_granular=True, granular_grain_ms=130.0,
-            granular_density=6.0, granular_pitch_st=0.12,
-            granular_scatter=0.60, granular_vol=0.05,
+            focus_vol_body=0.06, focus_vol_cortex=0.04,
+            use_chaos=True, chaos_depth=0.10,
+            use_granular=True, granular_grain_ms=140.0,
+            granular_density=5.0, granular_pitch_st=0.08,
+            granular_scatter=0.55, granular_vol=0.04,
             use_wind=True, wind_vol=0.05, wind_bw=11.0,
-            infra_freq=0.033, infra_depth=0.12,
-            phase_lock=True, phase_lock_depth=0.14,
+            infra_freq=0.033, infra_depth=0.11,
+            phase_lock=True, phase_lock_depth=0.12,
             use_respiratory=True, breath_bpm=4.5, breath_bpm_end=4.0,
-            breath_depth=0.14,
-            use_formant=True, formant_intensity=0.15,
-            use_reverb=True, reverb_rt60=950.0, reverb_wet=0.10,
-            use_comfort_eq=True, block_gain=0.58,
+            breath_depth=0.13,
+            use_formant=True, formant_intensity=0.10, formant_vowel='O',
+            use_reverb=True, reverb_rt60=900.0, reverb_wet=0.08,
+            use_comfort_eq=True, block_gain=0.55,
             quiet_before_s=40.0,
             underbed_vol=0.018,
+            intro_fade_s=14.0, outro_fade_s=12.0,
+            silk_cutoff_hz=4800.0,
             seed=203
         ),
-        # ── Pattern interrupt: short alien carrier stack (not louder — different)
+        # ── Soft pattern interrupt: texture/beat shift — NOT a whistle slam
         Block(
-            label='EDGE — INTERRUPT', dur_s=45,
-            c0=528, c1=396, b0=1.5, b1=14.3,
-            carrier_type='organ',
-            carrier_jitter=0.4, beat_jitter=0.04,
-            noise_pw=0.3, noise_bw=0.7,
-            iso_layers=[(14.3, 264, 0.07, 4, 4),
-                        (33.0, 180, 0.05, 4, 4)],
+            label='EDGE — INTERRUPT', dur_s=60,
+            c0=432, c1=440, b0=1.5, b1=5.5,
+            carrier_type='soft',
+            carrier_jitter=0.8, beat_jitter=0.06,
+            noise_pw=0.35, noise_bw=0.65,
+            iso_layers=[(5.5, 200, 0.04, 16, 16)],
             use_phi=True,
-            use_monaural=True, monaural_vol=0.045,
-            use_drone=True, drone_vol=0.06,
-            spatial_3d=True, itd_period=5.0, el_period=9.0, el_depth=0.40,
-            use_hrtf=True, hrtf_az_sweep=5.0, hrtf_elevation=18.0,
-            use_saturate=True, saturate_drive=0.09,
-            use_comfort_eq=True, block_gain=0.72,
-            use_underbed=False,
+            use_monaural=True, monaural_vol=0.03,
+            use_drone=True, drone_vol=0.05,
+            use_wind=True, wind_vol=0.045,
+            spatial_3d=True, itd_period=9.0, el_period=15.0, el_depth=0.28,
+            use_hrtf=True, hrtf_az_sweep=10.0, hrtf_elevation=12.0,
+            use_formant=True, formant_intensity=0.08, formant_vowel='U',
+            use_saturate=True, saturate_drive=0.06,
+            use_comfort_eq=True, block_gain=0.52,
+            use_underbed=True, underbed_vol=0.016,
+            quiet_before_s=25.0,
+            intro_fade_s=18.0, outro_fade_s=14.0,
+            silk_cutoff_hz=4500.0,
             seed=204
         ),
-        # ── F21 touch: brief edge (rare; soft volumes, exotic map)
+        # ── F21 touch: brief edge (soft exotic — no ASSR scream)
         Block(
             label='EDGE — F21 TOUCH', dur_s=210,
-            c0=396, c1=432, b0=14.3, b1=4.5,
+            c0=396, c1=432, b0=5.5, b1=4.5,
             carrier_type='warm',
-            carrier_jitter=1.8, beat_jitter=0.14,
+            carrier_jitter=1.5, beat_jitter=0.10,
             noise_pw=0.4, noise_bw=0.6,
-            iso_layers=[(40.0, 200, 0.055, 8, 10),
-                        (7.83, 216, 0.05, 8, 10)],
-            cfc_theta=4.5, cfc_strength=0.45,
-            assr_80hz_vol=0.03,
-            use_chaos=True, chaos_depth=0.18,
+            iso_layers=[(40.0, 200, 0.035, 14, 14),
+                        (7.83, 216, 0.04, 14, 14)],
+            cfc_theta=4.5, cfc_strength=0.38,
+            use_chaos=True, chaos_depth=0.12,
             use_phi=True,
             use_focus_mix=True,
             focus_body_beat=2.0, focus_cortex_beat=10.0,
-            focus_vol_body=0.06, focus_vol_cortex=0.05,
-            spatial_3d=True, itd_period=11.0, el_period=17.0, el_depth=0.45,
-            use_hrtf=True, hrtf_az_sweep=9.0, hrtf_elevation=22.0,
-            use_monaural=True, monaural_vol=0.04,
-            infra_freq=0.05, infra_depth=0.11,
-            use_respiratory=True, breath_bpm=4.0, breath_depth=0.13,
-            use_formant=True, formant_intensity=0.17,
-            use_reverb=True, reverb_rt60=1100.0, reverb_wet=0.11,
-            use_comfort_eq=True, block_gain=0.62,
-            quiet_before_s=20.0,
+            focus_vol_body=0.05, focus_vol_cortex=0.04,
+            spatial_3d=True, itd_period=12.0, el_period=19.0, el_depth=0.35,
+            use_hrtf=True, hrtf_az_sweep=10.0, hrtf_elevation=18.0,
+            use_monaural=True, monaural_vol=0.03,
+            infra_freq=0.05, infra_depth=0.10,
+            use_respiratory=True, breath_bpm=4.0, breath_depth=0.12,
+            use_formant=True, formant_intensity=0.10, formant_vowel='O',
+            use_reverb=True, reverb_rt60=1000.0, reverb_wet=0.09,
+            use_comfort_eq=True, block_gain=0.58,
+            quiet_before_s=25.0,
+            intro_fade_s=14.0, outro_fade_s=12.0,
+            silk_cutoff_hz=4800.0,
             seed=205
         ),
         # ── Seal: F10 / body return — session "counts"
@@ -892,18 +909,77 @@ def _gateway_edge():
             noise_pw=0.8, noise_bw=0.2,
             use_focus_mix=True,
             focus_body_beat=2.5, focus_cortex_beat=11.0,
-            focus_vol_body=0.07, focus_vol_cortex=0.05,
-            iso_layers=[(10.0, 200, 0.05, 8, 8)],
-            use_drone=True, drone_vol=0.08, drone_detune=0.10,
-            use_monaural=True, monaural_vol=0.035,
+            focus_vol_body=0.06, focus_vol_cortex=0.045,
+            iso_layers=[(10.0, 200, 0.04, 12, 12)],
+            use_drone=True, drone_vol=0.07, drone_detune=0.10,
+            use_monaural=True, monaural_vol=0.03,
             use_hrtf=True, itd_period=12.0,
             infra_freq=0.083, infra_depth=0.09,
             use_respiratory=True, breath_bpm=5.0, breath_bpm_end=6.0,
             breath_depth=0.11,
-            use_formant=True, formant_intensity=0.14,
-            use_saturate=True, saturate_drive=0.07,
-            use_comfort_eq=True, block_gain=0.70,
+            use_formant=True, formant_intensity=0.10, formant_vowel='A',
+            use_saturate=True, saturate_drive=0.06,
+            use_comfort_eq=True, block_gain=0.66,
             underbed_vol=0.015,
+            intro_fade_s=12.0, outro_fade_s=14.0,
             seed=206
         ),
     ]
+
+
+# ══════════════════════════════════════════════════════════
+#  CHAKRA ASCENT — ~35 min
+#  Symbolic solfeggio ladder (Puleo/Horowitz tradition) + elevation rise.
+#  Not physiology — intentional / harmonic layer like φ.
+# ══════════════════════════════════════════════════════════
+
+def _chakra_ascent():
+    # (label, carrier, b0, b1, elev, vowel, morph, morph_s, breath)
+    CH = [
+        ('CHAKRA — ROOT',       396, 8.0, 6.0, -20, 'A', None, 0.0, 6.0),
+        ('CHAKRA — SACRAL',     417, 6.0, 5.0, -12, 'A', None, 0.0, 5.5),
+        ('CHAKRA — PLEXUS',     528, 5.0, 4.5,  -5, 'A', None, 0.0, 5.0),
+        ('CHAKRA — HEART',      639, 4.5, 4.0,   0, 'E', None, 0.0, 4.5),
+        ('CHAKRA — THROAT',     741, 4.0, 3.5,  10, 'A', None, 0.0, 4.5),
+        ('CHAKRA — THIRD EYE',  852, 3.5, 2.0,  20, 'O', 'U', 25.0, 4.0),
+        ('CHAKRA — CROWN',      963, 2.0, 0.5,  28, 'U', 'M', 30.0, 4.0),
+    ]
+    blocks = []
+    for i, (label, c, b0, b1, el, vow, morph, ms, bpm) in enumerate(CH):
+        high = c >= 700
+        blocks.append(Block(
+            label=label, dur_s=300,
+            c0=c, c1=c, b0=b0, b1=b1,
+            carrier_type='soft' if high else 'warm',
+            carrier_jitter=0.5, beat_jitter=0.05,
+            noise_pw=0.55 if not high else 0.25,
+            noise_bw=0.45 if not high else 0.75,
+            iso_layers=[] if high else (
+                [(b0, min(c * 0.5, 220), 0.04, 14, 14)] if i < 3 else []
+            ),
+            use_hrtf=True, hrtf_elevation=el, hrtf_az_sweep=0.0,
+            use_formant=True,
+            formant_intensity=0.12 if not high else 0.07,
+            formant_vowel=vow,
+            formant_morph_vowel=morph,
+            formant_morph_s=ms,
+            use_phi=(i >= 5),
+            use_drone=True, drone_vol=0.06 if not high else 0.04,
+            use_wind=True, wind_vol=0.045,
+            use_monaural=True, monaural_vol=0.03,
+            use_respiratory=True, breath_bpm=bpm,
+            breath_bpm_end=max(4.0, bpm - 0.5),
+            breath_depth=0.11,
+            infra_freq=0.06, infra_depth=0.09,
+            use_saturate=True, saturate_drive=0.06,
+            use_reverb=(i >= 3),
+            reverb_rt60=700.0 + i * 60, reverb_wet=0.07,
+            use_comfort_eq=True,
+            block_gain=0.70 if not high else (0.58 if c < 900 else 0.48),
+            silk_cutoff_hz=5000.0 if not high else (4000.0 if c < 900 else 3600.0),
+            intro_fade_s=14.0, outro_fade_s=12.0,
+            underbed_vol=0.014,
+            quiet_before_s=20.0 if i == 5 else (25.0 if i == 6 else 0.0),
+            seed=300 + i,
+        ))
+    return blocks

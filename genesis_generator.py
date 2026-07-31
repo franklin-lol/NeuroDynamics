@@ -129,6 +129,24 @@ PROFILES = [
         ],
     },
     {
+        'key':   'CHAKRA_ASCENT',
+        'title': 'CHAKRA ASCENT',
+        'time':  '~37 мин',
+        'glyph': '✧',
+        'color': GREEN,
+        'short': '396→963 · elevation ladder · vowel formants',
+        'desc': [
+            'Символическая лестница: Root→Crown (не физика чакр)',
+            'HRTF elevation −20°→+28° · bija vowels · soft silk HF',
+            'Third Eye/Crown: φ + AUM morph · permanent levels',
+        ],
+        'protocol': [
+            'Лежать, глаза закрыты · громкость 15–25%',
+            'Интенциональный / sound-healing слой — не клинический протокол',
+            'Можно после EDGE или отдельно · не чаще 1× / 2–3 дня',
+        ],
+    },
+    {
         'key':   'WALK',
         'title': 'ПРОГУЛКА',
         'time':  '~31 мин',

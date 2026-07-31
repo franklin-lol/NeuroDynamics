@@ -151,7 +151,8 @@ def test_crossfade_silence_and_equal_power():
 
 
 @pytest.mark.parametrize("name", [
-    "GENESIS", "WALK", "SLEEP", "HEALER", "ORACLE", "WARRIOR", "GATEWAY_EDGE",
+    "GENESIS", "WALK", "SLEEP", "HEALER", "ORACLE", "WARRIOR",
+    "GATEWAY_EDGE", "CHAKRA_ASCENT",
 ])
 def test_profile_smoke(name):
     blocks = build_profile(name)
@@ -174,3 +175,33 @@ def test_gateway_edge_ladder():
     assert any("SEAL" in x for x in labels)
     core = sum(b.dur_s for b in blocks)
     assert 25 * 60 <= core <= 35 * 60
+    # Interrupt must stay soft carrier (no organ scream)
+    intr = next(b for b in blocks if "INTERRUPT" in b.label)
+    assert intr.carrier_type == "soft"
+    assert intr.block_gain <= 0.60
+
+
+def test_chakra_ascent_ladder():
+    blocks = build_profile("CHAKRA_ASCENT")
+    assert len(blocks) == 7
+    carriers = [b.c0 for b in blocks]
+    assert carriers == [396, 417, 528, 639, 741, 852, 963]
+    elevs = [b.hrtf_elevation for b in blocks]
+    assert elevs[0] < elevs[-1]
+    crown = blocks[-1]
+    assert crown.formant_morph_vowel == "M"
+    L, R = crown.render()
+    assert not np.any(np.isnan(L))
+    assert max(np.max(np.abs(L)), np.max(np.abs(R))) <= 0.56
+
+
+def test_vowel_formants_and_silk():
+    from psychoacoustic.dsp import formant_resonator, silk_lowpass, VOWEL_FORMANTS
+    assert set(VOWEL_FORMANTS) >= {"A", "O", "U", "M"}
+    n = int(SR * 0.5)
+    x = np.random.randn(n).astype(np.float32) * 0.1
+    y = formant_resonator(x, 0.15, vowel="U", morph_vowel="M", morph_s=0.2)
+    z = silk_lowpass(y, 4000.0)
+    assert y.shape == x.shape
+    assert z.shape == x.shape
+    assert not np.any(np.isnan(z))

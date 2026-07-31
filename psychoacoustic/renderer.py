@@ -230,16 +230,25 @@ def render_session(blocks: List[Block],
             if prev_block is None:
                 use_ep = False
                 sil = 0.2
+                fade = fade_s
             elif _carrier_jump(prev_block, block):
                 use_ep = False
-                sil = 0.5
+                sil = 0.35
+                fade = max(fade_s, 12.0)  # longer ease across carrier jumps
             else:
+                use_ep = True
+                sil = 0.0
+                fade = fade_s
+
+            # Extra-soft entry after structured quiet / into interrupt-like labels
+            if qb > 0 or 'INTERRUPT' in block.label.upper():
+                fade = max(fade, 14.0)
                 use_ep = True
                 sil = 0.0
 
             prev_tail = crossfade_write(
                 fh, prev_tail, L, R,
-                fade_s=fade_s, silence_s=sil, equal_power=use_ep)
+                fade_s=fade, silence_s=sil, equal_power=use_ep)
             del L, R
             prev_block = block
 

@@ -53,19 +53,84 @@ def tube_saturate(sig: np.ndarray, drive: float = 0.10) -> np.ndarray:
 #  Не применять к WARRIOR — там нужна острота gamma.
 # ══════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════
+#  FORMANT RESONATOR — vowel presets (bija-inspired)
+#  Symbolic / intentional timbre layer — not physiology.
+# ══════════════════════════════════════════════════════════
+
+VOWEL_FORMANTS = {
+    # (f_center_hz, bandwidth_hz, relative_gain)
+    'A': [(700.0, 160.0, 0.38), (1200.0, 200.0, 0.26), (2500.0, 280.0, 0.10)],
+    'O': [(500.0, 140.0, 0.40), (900.0,  180.0, 0.24), (2400.0, 260.0, 0.09)],
+    'U': [(320.0, 120.0, 0.42), (800.0,  160.0, 0.20), (2200.0, 240.0, 0.08)],
+    'E': [(480.0, 140.0, 0.36), (1800.0, 220.0, 0.22), (2500.0, 260.0, 0.09)],
+    'M': [(250.0, 100.0, 0.45), (1000.0, 120.0, 0.14), (1800.0, 200.0, 0.06)],
+}
+
+
+def _formant_bank(sig: np.ndarray, bands, intensity: float) -> np.ndarray:
+    nyq = SR / 2.0
+    out = sig.astype(np.float32).copy()
+    for f_center, bw, gain in bands:
+        lo = max(0.01, (f_center - bw / 2) / nyq)
+        hi = min(0.499, (f_center + bw / 2) / nyq)
+        if lo >= hi:
+            continue
+        sos = butter(2, [lo, hi], btype='band', output='sos')
+        res = sosfilt(sos, sig).astype(np.float32)
+        out += res * gain * intensity
+    return out
+
+
+def formant_resonator(sig: np.ndarray, intensity: float = 0.25,
+                      vowel: str = 'A',
+                      morph_vowel: str = None,
+                      morph_s: float = 0.0) -> np.ndarray:
+    """
+    Vocal formant bank. Optional end-of-block morph (e.g. A→U→M / AUM).
+    F3 gains kept conservative to avoid whistle/sizzle.
+    """
+    v0 = vowel.upper() if vowel else 'A'
+    bands0 = VOWEL_FORMANTS.get(v0, VOWEL_FORMANTS['A'])
+    if not morph_vowel or morph_s <= 0:
+        return _formant_bank(sig, bands0, intensity)
+
+    v1 = morph_vowel.upper()
+    bands1 = VOWEL_FORMANTS.get(v1, bands0)
+    n = len(sig)
+    mn = min(int(morph_s * SR), n // 2)
+    if mn < 8:
+        return _formant_bank(sig, bands0, intensity)
+
+    a = _formant_bank(sig, bands0, intensity)
+    b = _formant_bank(sig, bands1, intensity)
+    out = a.copy()
+    # Morph only the tail
+    w = np.linspace(0.0, 1.0, mn, dtype=np.float32)
+    out[-mn:] = (a[-mn:] * (1.0 - w) + b[-mn:] * w).astype(np.float32)
+    return out
+
+
+def silk_lowpass(sig: np.ndarray, cutoff_hz: float = 5200.0) -> np.ndarray:
+    """Gentle anti-sizzle LP — removes piercing HF without killing warmth."""
+    nyq = SR / 2.0
+    w = np.clip(cutoff_hz / nyq, 0.01, 0.49)
+    sos = butter(2, w, btype='low', output='sos')
+    return sosfilt(sos, sig.astype(np.float64)).astype(np.float32)
+
+
 def comfort_filter(L: np.ndarray, R: np.ndarray,
                    low_hz:  float = 100.0,
                    low_db:  float = 1.5,
-                   high_hz: float = 7500.0,
-                   high_db: float = -2.5) -> tuple:
+                   high_hz: float = 6500.0,
+                   high_db: float = -3.5) -> tuple:
     """
-    Mastering EQ: warm low shelf + gentle high-frequency silk.
-    3-band split: Lo / Mid / Hi — individual gain per band — recombine.
-    Preserves binaural phase: gain is linear (no phase shift added).
+    Mastering EQ: warm low shelf + stronger high silk (anti-whistle).
+    high_db default −3.5 @ 6.5 kHz (was −2.5 @ 7.5) for permanent listening.
     """
     nyq   = SR / 2.0
-    A_low = 10 ** (low_db  / 20.0)   # 1.188 = boost
-    A_hi  = 10 ** (high_db / 20.0)   # 0.749 = cut
+    A_low = 10 ** (low_db  / 20.0)
+    A_hi  = 10 ** (high_db / 20.0)
     w_lo  = np.clip(low_hz  / nyq, 0.001, 0.499)
     w_hi  = np.clip(high_hz / nyq, 0.001, 0.499)
     sos_lo = butter(1, w_lo, btype='low',  output='sos')
@@ -78,28 +143,6 @@ def comfort_filter(L: np.ndarray, R: np.ndarray,
         mid = s - lo - hi
         out.append((lo * A_low + mid + hi * A_hi).astype(np.float32))
     return out[0], out[1]
-
-
-# ══════════════════════════════════════════════════════════
-#  FORMANT RESONATOR
-# ══════════════════════════════════════════════════════════
-
-def formant_resonator(sig: np.ndarray, intensity: float = 0.25) -> np.ndarray:
-    nyq = SR / 2.0
-    out = sig.astype(np.float32)
-    for f_center, bw, gain in [
-        (700.0,  160.0, 0.38),
-        (1200.0, 200.0, 0.26),
-        (2500.0, 320.0, 0.14),
-    ]:
-        lo   = max(0.01, (f_center - bw / 2) / nyq)
-        hi   = min(0.499, (f_center + bw / 2) / nyq)
-        if lo >= hi:
-            continue
-        sos  = butter(2, [lo, hi], btype='band', output='sos')
-        res  = sosfilt(sos, sig).astype(np.float32)
-        out += res * gain * intensity
-    return out
 
 
 # ══════════════════════════════════════════════════════════

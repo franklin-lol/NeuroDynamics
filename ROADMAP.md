@@ -20,7 +20,9 @@
 *   **Equal-power continuity + underbed + structured quiet.**
 *   **Dual-mode profiles:** permanent rest vs sharp-safe WARRIOR.
 *   **Honest science framing** in README (hypotheses, not clinical claims).
-*   **GATEWAY_EDGE (~31 min):** F10→F12→F15→interrupt→F21 touch→seal.
+*   **GATEWAY_EDGE (~31 min):** F10→F12→F15→soft interrupt→F21 touch→seal.
+*   **CHAKRA_ASCENT (~37 min):** solfeggio ladder + elevation + vowel formants (symbolic).
+*   **Anti-sizzle:** silk LP, softer comfort HF, min iso attacks, block intro fades.
 
 ## [PLANNED] Phase: NEUROSYNC (Biofeedback & Adaptation)
 *   **EEG Integration:** OpenBCI / Muse (closed-loop).

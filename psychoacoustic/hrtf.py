@@ -102,8 +102,9 @@ def _brown_duda_ild_filter(az_abs_rad: float) -> tuple:
 # ══════════════════════════════════════════════════════════
 
 def _apply_pinna(sig: np.ndarray, delay_ms: float = 0.30,
-                 gain: float = 0.20) -> np.ndarray:
-    """Задержка + аттенюация → spect. notch ~8–10 kHz (elevation cue)."""
+                 gain: float = 0.12) -> np.ndarray:
+    """Задержка + аттенюация → spect. notch ~8–10 kHz (elevation cue).
+    gain lowered 0.20→0.12 to reduce HF whistle/sizzle."""
     n   = len(sig)
     d   = max(1, int(delay_ms * 0.001 * SR))
     ref = np.zeros(n, np.float32)
@@ -112,15 +113,12 @@ def _apply_pinna(sig: np.ndarray, delay_ms: float = 0.30,
     return (sig + ref).astype(np.float32)
 
 
-# ══════════════════════════════════════════════════════════
-#  4. ELEVATION SPECTRAL TILT
-# ══════════════════════════════════════════════════════════
-
 def _elevation_shelf(sig: np.ndarray, elevation_rad: float) -> np.ndarray:
-    """HF shelf EQ: выше горизонта → +presence, ниже → -presence."""
+    """HF shelf EQ: выше горизонта → +presence, ниже → -presence.
+    Cap ±3 dB (was ±6) to avoid piercing on high elevation."""
     if abs(elevation_rad) < 0.05:
         return sig
-    gain_db = np.clip(elevation_rad / (np.pi / 2) * 4.0, -6.0, 6.0)
+    gain_db = np.clip(elevation_rad / (np.pi / 2) * 3.0, -3.0, 3.0)
     fc      = 4000.0
     K       = np.tan(np.pi * fc / SR)
     A       = 10.0 ** (gain_db / 40.0)
