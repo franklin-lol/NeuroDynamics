@@ -151,7 +151,7 @@ def test_crossfade_silence_and_equal_power():
 
 
 @pytest.mark.parametrize("name", [
-    "GENESIS", "WALK", "SLEEP", "HEALER", "ORACLE", "WARRIOR",
+    "GENESIS", "WALK", "SLEEP", "HEALER", "ORACLE", "WARRIOR", "GATEWAY_EDGE",
 ])
 def test_profile_smoke(name):
     blocks = build_profile(name)
@@ -161,3 +161,16 @@ def test_profile_smoke(name):
     peak = max(np.max(np.abs(L)), np.max(np.abs(R)))
     assert not np.any(np.isnan(L))
     assert peak <= 0.56
+
+
+def test_gateway_edge_ladder():
+    blocks = build_profile("GATEWAY_EDGE")
+    labels = [b.label for b in blocks]
+    assert any("F10" in x for x in labels)
+    assert any("F12" in x for x in labels)
+    assert any("F15" in x for x in labels)
+    assert any("INTERRUPT" in x for x in labels)
+    assert any("F21" in x for x in labels)
+    assert any("SEAL" in x for x in labels)
+    core = sum(b.dur_s for b in blocks)
+    assert 25 * 60 <= core <= 35 * 60

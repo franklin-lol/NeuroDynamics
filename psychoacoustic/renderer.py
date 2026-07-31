@@ -127,6 +127,7 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
               "  ComfortEQ→soft ceiling→block_gain master chain",
               "  Resp:     open-loop respiratory AM (optional bpm ramp)",
               "  Quiet:    structured near-silence before void/OBE",
+              "  EDGE:     GATEWAY_EDGE Focus ladder + interrupt + seal",
               "═" * 72]
 
     with open(out_path, 'w', encoding='utf-8') as f:

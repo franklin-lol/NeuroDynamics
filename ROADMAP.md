@@ -20,6 +20,7 @@
 *   **Equal-power continuity + underbed + structured quiet.**
 *   **Dual-mode profiles:** permanent rest vs sharp-safe WARRIOR.
 *   **Honest science framing** in README (hypotheses, not clinical claims).
+*   **GATEWAY_EDGE (~31 min):** F10→F12→F15→interrupt→F21 touch→seal.
 
 ## [PLANNED] Phase: NEUROSYNC (Biofeedback & Adaptation)
 *   **EEG Integration:** OpenBCI / Muse (closed-loop).

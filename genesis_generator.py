@@ -44,6 +44,7 @@ DIM_W  = C(100,100,115)
 PURPLE = C(160,100,255)
 RED    = C(255, 80, 80)
 GREEN  = C( 80,220,120)
+MAGENTA= C(255,110,190)
 BG_SEL = C( 25, 35, 55, bg=True)
 BG_DIM = C( 12, 15, 22, bg=True)
 
@@ -107,6 +108,24 @@ PROFILES = [
             'Проводные наушники — BT разрушает ITD-фазу',
             'Громкость 20–28%  ·  не засыпать первые 5 мин',
             'Не чаще 1 раза в 2 дня  ·  10 мин тишины после',
+        ],
+    },
+    {
+        'key':   'GATEWAY_EDGE',
+        'title': 'GATEWAY EDGE',
+        'time':  '~31 мин',
+        'glyph': '✦',
+        'color': MAGENTA,
+        'short': 'F10→12→15→interrupt→F21 touch→seal',
+        'desc': [
+            'Лестница Focus для автоматического F10: expand → no-time → edge',
+            '45s pattern interrupt · structured quiet · FocusMix dual-state',
+            'Не nightly — рывок/прорыв. Громкость 15–25%. Лежать.',
+        ],
+        'protocol': [
+            'Уже умеешь F10 — не форсируй вход, отдай карту сессии',
+            'Громкость 15–25%  ·  глаза закрыты  ·  не чаще 1× / 1–2 нед',
+            'После SEAL — 5–10 мин тишины без телефона',
         ],
     },
     {

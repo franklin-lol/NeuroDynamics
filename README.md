@@ -40,6 +40,7 @@
 |-------|---------|----------|
 | **Permanent** | GENESIS, WALK, SLEEP, HEALER, ORACLE | ComfortEQ, мягкие iso/ASSR, quiet voids, breath ramps |
 | **Sharp-safe** | WARRIOR | Выше энергия gamma/ASSR, soft-gate + ceiling, ComfortEQ только на descent |
+| **Gateway Edge** | GATEWAY_EDGE (~31 мин) | F10→F12→F15→interrupt→F21 touch→seal; редкий breakthrough |
 
 ## Архитектура сессий
 
@@ -55,8 +56,8 @@
 
 *   **Оборудование:** только проводные наушники.  
 *   **Громкость:** 15–30%. Звук должен оставаться комфортным часами (permanent).  
-*   **Положение:** лёжа / полулёжа (SLEEP/HEALER/ORACLE); WARRIOR — сидя/стоя.  
-*   **Регулярность:** не чаще одного раза в 48 часов для глубоких профилей.
+*   **Положение:** лёжа / полулёжа (SLEEP/HEALER/ORACLE/GATEWAY_EDGE); WARRIOR — сидя/стоя.  
+*   **Регулярность:** глубокие профили — не чаще 1× / 48 ч; **GATEWAY_EDGE** — 1× / 1–2 нед; после SEAL — 5–10 мин тишины.
 
 ## Структура проекта
 

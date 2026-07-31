@@ -7,23 +7,28 @@ Permanent mode (GENESIS/WALK/SLEEP/HEALER/ORACLE):
 
 Sharp-safe (WARRIOR):
   higher iso/ASSR · no comfort on peak blocks · soft-gate + ceiling + atk≥4s
+
+Gateway Edge (~30 min):
+  F10 → F12 → F15 → interrupt → F21 touch → seal
 """
 
 from .block import Block
 
 
 def build_profile(name: str):
-    n = name.upper()
+    n = name.upper().replace('-', '_').replace(' ', '_')
     if   n == 'GENESIS':  return _genesis()
     elif n == 'WALK':     return _walk()
     elif n == 'SLEEP':    return _sleep()
     elif n == 'HEALER':   return _healer()
     elif n == 'ORACLE':   return _oracle()
     elif n == 'WARRIOR':  return _warrior()
+    elif n in ('GATEWAY_EDGE', 'GATEWAY', 'EDGE'):
+        return _gateway_edge()
     else:
         raise ValueError(
             f"Unknown profile '{name}'. "
-            f"Use: GENESIS WALK SLEEP HEALER ORACLE WARRIOR")
+            f"Use: GENESIS WALK SLEEP HEALER ORACLE WARRIOR GATEWAY_EDGE")
 
 
 # ══════════════════════════════════════════════════════════
@@ -743,4 +748,162 @@ def _warrior():
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               seed=96),
+    ]
+
+
+# ══════════════════════════════════════════════════════════
+#  GATEWAY EDGE — ~29–31 min
+#  Monroe-inspired ladder for practitioners with F10 automation:
+#  F10 lock → F12 expand → F15 no-time → interrupt → F21 touch → seal
+#  Rare-use edge session; not nightly. Permanent levels, exotic map.
+# ══════════════════════════════════════════════════════════
+
+def _gateway_edge():
+    return [
+        # ── F10: mind awake / body asleep (FocusMix dual-state)
+        Block(
+            label='EDGE — F10 LOCK', dur_s=300,
+            c0=200, c1=200, b0=10.0, b1=4.0,
+            carrier_type='soft',
+            carrier_jitter=0.6, beat_jitter=0.06,
+            noise_pw=0.5, noise_bw=0.5,
+            use_focus_mix=True,
+            focus_body_beat=2.0, focus_cortex_beat=12.0,
+            focus_vol_body=0.08, focus_vol_cortex=0.055,
+            use_monaural=True, monaural_vol=0.035,
+            use_drone=True, drone_vol=0.07, drone_detune=0.12,
+            use_wind=True, wind_vol=0.04, wind_bw=14.0,
+            infra_freq=0.083, infra_depth=0.09,
+            use_respiratory=True, breath_bpm=6.0, breath_bpm_end=5.0,
+            breath_depth=0.12,
+            use_formant=True, formant_intensity=0.14,
+            use_saturate=True, saturate_drive=0.07,
+            use_comfort_eq=True, block_gain=0.68,
+            underbed_vol=0.016,
+            seed=201
+        ),
+        # ── F12: expanded awareness
+        Block(
+            label='EDGE — F12 EXPAND', dur_s=420,
+            c0=200, c1=432, b0=4.0, b1=7.83,
+            carrier_type='warm',
+            carrier_jitter=1.2, beat_jitter=0.10,
+            noise_pw=0.7, noise_bw=0.3,
+            iso_layers=[(7.83, 216, 0.06, 12, 12),
+                        (40.0, 200, 0.045, 14, 10)],
+            cfc_theta=7.83, cfc_strength=0.32,
+            use_phi=True,
+            schumann_mode=True,
+            use_hrtf=True, hrtf_az_sweep=14.0, hrtf_elevation=8.0,
+            itd_period=14.0,
+            use_monaural=True, monaural_vol=0.04,
+            use_drone=True, drone_vol=0.07,
+            use_lfo_filter=True, lfo_fc=720.0, lfo_depth=280.0, lfo_rate=0.04,
+            infra_freq=0.067, infra_depth=0.10,
+            use_respiratory=True, breath_bpm=5.5, breath_bpm_end=4.5,
+            breath_depth=0.12,
+            use_formant=True, formant_intensity=0.16,
+            use_saturate=True, saturate_drive=0.08,
+            use_reverb=True, reverb_rt60=750.0, reverb_wet=0.09,
+            use_comfort_eq=True, block_gain=0.70,
+            seed=202
+        ),
+        # ── F15: no-time / void (quiet before = internalization)
+        Block(
+            label='EDGE — F15 NO-TIME', dur_s=480,
+            c0=432, c1=432, b0=7.83, b1=1.5,
+            carrier_type='soft',
+            carrier_jitter=2.2, beat_jitter=0.12,
+            noise_pw=0.0, noise_bw=1.0,
+            iso_layers=[(4.5, 216, 0.055, 16, 20),
+                        (40.0, 180, 0.04, 20, 20)],
+            cfc_theta=5.0, cfc_strength=0.42,
+            use_focus_mix=True,
+            focus_body_beat=1.5, focus_cortex_beat=8.0,
+            focus_vol_body=0.07, focus_vol_cortex=0.045,
+            use_chaos=True, chaos_depth=0.14,
+            use_granular=True, granular_grain_ms=130.0,
+            granular_density=6.0, granular_pitch_st=0.12,
+            granular_scatter=0.60, granular_vol=0.05,
+            use_wind=True, wind_vol=0.05, wind_bw=11.0,
+            infra_freq=0.033, infra_depth=0.12,
+            phase_lock=True, phase_lock_depth=0.14,
+            use_respiratory=True, breath_bpm=4.5, breath_bpm_end=4.0,
+            breath_depth=0.14,
+            use_formant=True, formant_intensity=0.15,
+            use_reverb=True, reverb_rt60=950.0, reverb_wet=0.10,
+            use_comfort_eq=True, block_gain=0.58,
+            quiet_before_s=40.0,
+            underbed_vol=0.018,
+            seed=203
+        ),
+        # ── Pattern interrupt: short alien carrier stack (not louder — different)
+        Block(
+            label='EDGE — INTERRUPT', dur_s=45,
+            c0=528, c1=396, b0=1.5, b1=14.3,
+            carrier_type='organ',
+            carrier_jitter=0.4, beat_jitter=0.04,
+            noise_pw=0.3, noise_bw=0.7,
+            iso_layers=[(14.3, 264, 0.07, 4, 4),
+                        (33.0, 180, 0.05, 4, 4)],
+            use_phi=True,
+            use_monaural=True, monaural_vol=0.045,
+            use_drone=True, drone_vol=0.06,
+            spatial_3d=True, itd_period=5.0, el_period=9.0, el_depth=0.40,
+            use_hrtf=True, hrtf_az_sweep=5.0, hrtf_elevation=18.0,
+            use_saturate=True, saturate_drive=0.09,
+            use_comfort_eq=True, block_gain=0.72,
+            use_underbed=False,
+            seed=204
+        ),
+        # ── F21 touch: brief edge (rare; soft volumes, exotic map)
+        Block(
+            label='EDGE — F21 TOUCH', dur_s=210,
+            c0=396, c1=432, b0=14.3, b1=4.5,
+            carrier_type='warm',
+            carrier_jitter=1.8, beat_jitter=0.14,
+            noise_pw=0.4, noise_bw=0.6,
+            iso_layers=[(40.0, 200, 0.055, 8, 10),
+                        (7.83, 216, 0.05, 8, 10)],
+            cfc_theta=4.5, cfc_strength=0.45,
+            assr_80hz_vol=0.03,
+            use_chaos=True, chaos_depth=0.18,
+            use_phi=True,
+            use_focus_mix=True,
+            focus_body_beat=2.0, focus_cortex_beat=10.0,
+            focus_vol_body=0.06, focus_vol_cortex=0.05,
+            spatial_3d=True, itd_period=11.0, el_period=17.0, el_depth=0.45,
+            use_hrtf=True, hrtf_az_sweep=9.0, hrtf_elevation=22.0,
+            use_monaural=True, monaural_vol=0.04,
+            infra_freq=0.05, infra_depth=0.11,
+            use_respiratory=True, breath_bpm=4.0, breath_depth=0.13,
+            use_formant=True, formant_intensity=0.17,
+            use_reverb=True, reverb_rt60=1100.0, reverb_wet=0.11,
+            use_comfort_eq=True, block_gain=0.62,
+            quiet_before_s=20.0,
+            seed=205
+        ),
+        # ── Seal: F10 / body return — session "counts"
+        Block(
+            label='EDGE — SEAL', dur_s=300,
+            c0=432, c1=200, b0=4.5, b1=10.0,
+            carrier_type='soft',
+            carrier_jitter=0.8, beat_jitter=0.06,
+            noise_pw=0.8, noise_bw=0.2,
+            use_focus_mix=True,
+            focus_body_beat=2.5, focus_cortex_beat=11.0,
+            focus_vol_body=0.07, focus_vol_cortex=0.05,
+            iso_layers=[(10.0, 200, 0.05, 8, 8)],
+            use_drone=True, drone_vol=0.08, drone_detune=0.10,
+            use_monaural=True, monaural_vol=0.035,
+            use_hrtf=True, itd_period=12.0,
+            infra_freq=0.083, infra_depth=0.09,
+            use_respiratory=True, breath_bpm=5.0, breath_bpm_end=6.0,
+            breath_depth=0.11,
+            use_formant=True, formant_intensity=0.14,
+            use_saturate=True, saturate_drive=0.07,
+            use_comfort_eq=True, block_gain=0.70,
+            underbed_vol=0.015,
+            seed=206
+        ),
     ]
