@@ -73,6 +73,48 @@ def build_carrier(c0, c1, n, jitter_depth=2.0, seed=0,
     return out
 
 
+def adaptive_drift_envelope(n, control_points, micro_amp=0.0,
+                            micro_rate=0.012, seed=0):
+    """
+    Piecewise beat path for habituation-resistant deep sessions.
+
+    control_points: iterable of (frac 0..1, beat_hz), sorted by frac.
+    Linear interpolation between points, then independent micro-oscillation
+    (±micro_amp Hz) — not synchronized to breath/infra/spatial layers.
+    """
+    if n < 2:
+        return np.zeros(max(n, 0), dtype=np.float64)
+    pts = sorted((float(a), float(b)) for a, b in control_points)
+    if not pts:
+        return np.full(n, 10.0, dtype=np.float64)
+    if pts[0][0] > 0.0:
+        pts = [(0.0, pts[0][1])] + pts
+    if pts[-1][0] < 1.0:
+        pts = pts + [(1.0, pts[-1][1])]
+
+    fracs = np.array([p[0] for p in pts], dtype=np.float64)
+    hz    = np.array([p[1] for p in pts], dtype=np.float64)
+    x = np.linspace(0.0, 1.0, n, dtype=np.float64)
+    base = np.interp(x, fracs, hz)
+
+    if micro_amp and micro_amp > 0:
+        t = np.arange(n, dtype=np.float64) / SR
+        # Multi-rate + ultra-slow wander — never metronomic
+        micro = micro_amp * (
+            0.50 * np.sin(2 * np.pi * micro_rate * t + seed * 0.37)
+            + 0.30 * np.sin(2 * np.pi * micro_rate * 0.43 * t + 1.9)
+            + 0.20 * np.sin(2 * np.pi * micro_rate * 1.71 * t + 0.6)
+        )
+        wander = pink_noise(n, seed + 77).astype(np.float64)
+        a = float(np.exp(-2.0 * np.pi * 0.04 / SR))
+        wander = lfilter([1.0 - a], [1.0, -a], wander)
+        wander -= wander.mean()
+        wander /= (np.max(np.abs(wander)) + 1e-9)
+        base = base + micro + wander * micro_amp * 0.35
+
+    return np.clip(base, 0.3, 120.0).astype(np.float64)
+
+
 # ══════════════════════════════════════════════════════════
 #  CROSSFADE  —  fade_through_silence
 #

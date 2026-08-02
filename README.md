@@ -43,6 +43,7 @@
 | **Sharp-safe** | WARRIOR | Выше энергия gamma/ASSR, soft-gate + ceiling, ComfortEQ только на descent |
 | **Gateway Edge** | GATEWAY_EDGE (~31 мин) | F10→F12→F15→soft interrupt→F21 touch→seal |
 | **Chakra** | CHAKRA_ASCENT (~37 мин) | 396→963 + elevation ladder + vowel formants (symbolic) |
+| **Deep Dive PRO** | DEEP_DIVE (~120 мин) | F10→F21→F27+ adaptive drift · ночной · без чаш/bridges · gain ≤0.52 |
 
 ## Архитектура сессий
 
@@ -58,8 +59,8 @@
 
 *   **Оборудование:** только проводные наушники.  
 *   **Громкость:** 15–30%. Звук должен оставаться комфортным часами (permanent).  
-*   **Положение:** лёжа / полулёжа (SLEEP/HEALER/ORACLE/GATEWAY_EDGE); WARRIOR — сидя/стоя.  
-*   **Регулярность:** глубокие профили — не чаще 1× / 48 ч; **GATEWAY_EDGE** — 1× / 1–2 нед; после SEAL — 5–10 мин тишины.
+*   **Положение:** лёжа / полулёжа (SLEEP/HEALER/ORACLE/GATEWAY_EDGE/DEEP_DIVE); WARRIOR — сидя/стоя.  
+*   **Регулярность:** глубокие профили — не чаще 1× / 48 ч; **GATEWAY_EDGE** — 1× / 1–2 нед; **DEEP_DIVE** — 1× / неделю; после SEAL — 10 мин тишины.
 
 ## Структура проекта
 

@@ -107,6 +107,13 @@ class Block:
     carrier_drift_rate: float = 0.018
     use_spectral_breath: bool = True     # mild wet LP morph on full mix
     spectral_breath_mix: float = 0.10
+    # ── Adaptive beat drift (habituation-resistant path; skips pink beat jitter)
+    # beat_ctrl: list of (frac 0..1, beat_hz) control points
+    beat_ctrl:          Optional[list] = None
+    beat_micro_amp:     float = 0.0      # ±Hz micro-oscillation around path
+    beat_micro_rate:    float = 0.012
+    # ── Session continuity (DEEP DIVE / night: skip 20s ambient bridges)
+    skip_ambient_bridge: bool = False
     # ── AM depth budget cap (infra + respiratory combined)
     am_depth_cap:       float = 0.26
     # ── Master
@@ -139,12 +146,20 @@ class Block:
         n = int(self.dur_s * SR)
 
         # ── Beat envelope
-        B_raw = log_sweep(self.b0, self.b1, n)
-        if self.use_chaos:
-            B_raw = chaos_modulate(B_raw, depth=self.chaos_depth,
-                                   seed=self.seed + 400)
+        if self.beat_ctrl:
+            from .core import adaptive_drift_envelope
+            B_raw = adaptive_drift_envelope(
+                n, self.beat_ctrl,
+                micro_amp=self.beat_micro_amp,
+                micro_rate=self.beat_micro_rate,
+                seed=self.seed + 50)
         else:
-            B_raw = jitter_envelope(B_raw, self.beat_jitter, self.seed + 50)
+            B_raw = log_sweep(self.b0, self.b1, n)
+            if self.use_chaos:
+                B_raw = chaos_modulate(B_raw, depth=self.chaos_depth,
+                                       seed=self.seed + 400)
+            else:
+                B_raw = jitter_envelope(B_raw, self.beat_jitter, self.seed + 50)
 
         if self.phase_lock and self.infra_freq > 0:
             t     = np.arange(n, dtype=np.float64) / SR

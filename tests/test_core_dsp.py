@@ -152,7 +152,7 @@ def test_crossfade_silence_and_equal_power():
 
 @pytest.mark.parametrize("name", [
     "GENESIS", "WALK", "SLEEP", "HEALER", "ORACLE", "WARRIOR",
-    "GATEWAY_EDGE", "CHAKRA_ASCENT",
+    "GATEWAY_EDGE", "CHAKRA_ASCENT", "DEEP_DIVE",
 ])
 def test_profile_smoke(name):
     from dataclasses import replace
@@ -250,3 +250,49 @@ def test_organic_atmosphere_and_drift():
     L, R = b.render()
     assert not np.any(np.isnan(L))
     assert max(np.max(np.abs(L)), np.max(np.abs(R))) <= 0.56
+
+
+def test_deep_dive_structure():
+    """DEEP_DIVE PRO: 9 blocks, all soft carrier, no carrier jumps, ~120 min."""
+    blocks = build_profile("DEEP_DIVE")
+    assert len(blocks) == 9
+    labels = [b.label for b in blocks]
+    assert any("SETTLE" in x for x in labels)
+    assert any("ABYSS" in x for x in labels)
+    assert any("F21" in x for x in labels)
+    assert any("F27" in x for x in labels)
+    assert any("SEAL" in x for x in labels)
+
+    # All carriers stay at 200 Hz (no jumps = no silence gaps at night)
+    for b in blocks:
+        assert b.c0 == 200 and b.c1 == 200, f"{b.label} carrier not 200"
+
+    # All blocks skip ambient bridges
+    for b in blocks:
+        assert b.skip_ambient_bridge, f"{b.label} missing skip_ambient_bridge"
+
+    # At least 4 blocks use beat_ctrl (adaptive drift)
+    ctrl_count = sum(1 for b in blocks if b.beat_ctrl)
+    assert ctrl_count >= 4, f"Only {ctrl_count} beat_ctrl blocks"
+
+    # Total core time ~120 min (± tolerance)
+    core = sum(b.dur_s for b in blocks)
+    assert 110 * 60 <= core <= 130 * 60, f"Core time {core/60:.1f} min"
+
+    # Night-safe gains: all blocks <= 0.55
+    for b in blocks:
+        assert b.block_gain <= 0.55, f"{b.label} gain {b.block_gain} too loud"
+
+
+def test_deep_dive_beat_ctrl_render():
+    """Render a short beat_ctrl block from DEEP_DIVE — no NaN, within ceiling."""
+    from dataclasses import replace
+    blocks = build_profile("DEEP_DIVE")
+    # Pick the ABYSS block (has beat_ctrl)
+    abyss = next(b for b in blocks if "ABYSS" in b.label)
+    short = replace(abyss, dur_s=2.0)
+    L, R = short.render()
+    assert not np.any(np.isnan(L))
+    assert not np.any(np.isnan(R))
+    peak = max(np.max(np.abs(L)), np.max(np.abs(R)))
+    assert peak <= 0.56, f"Peak {peak} exceeds ceiling"

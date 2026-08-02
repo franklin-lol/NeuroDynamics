@@ -32,8 +32,13 @@ def export_cue(blocks: List[Block], out_path: str, flac_filename: str,
     Генерирует .cue файл с треком для каждого блока.
     Плееры (foobar2000, VLC, mpv) показывают название текущей фазы.
     """
-    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
-    BREAK_AFTER.add(0)
+    BREAK_AFTER = {
+        i for i, b in enumerate(blocks)
+        if b.dur_s >= break_min_dur
+        and not getattr(b, 'skip_ambient_bridge', False)
+    }
+    if blocks and not getattr(blocks[0], 'skip_ambient_bridge', False):
+        BREAK_AFTER.add(0)
 
     lines = [
         f'PERFORMER "{artist}"',
@@ -65,8 +70,13 @@ def export_cue(blocks: List[Block], out_path: str, flac_filename: str,
 
 def export_map(blocks: List[Block], profile: str, out_path: str,
                break_min_dur: float = 600.0):
-    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
-    BREAK_AFTER.add(0)
+    BREAK_AFTER = {
+        i for i, b in enumerate(blocks)
+        if b.dur_s >= break_min_dur
+        and not getattr(b, 'skip_ambient_bridge', False)
+    }
+    if blocks and not getattr(blocks[0], 'skip_ambient_bridge', False):
+        BREAK_AFTER.add(0)
 
     lines = ["═" * 72,
              f"  NEURODYNAMICS — SESSION MAP  |  Profile: {profile}", "═" * 72, ""]
@@ -139,8 +149,13 @@ def estimate_session_duration(blocks: List[Block],
                               break_min_dur: float = 600.0,
                               ffr_s: float = 20.0) -> float:
     """Total rendered seconds including FFR, quiet, and ambient bridges."""
-    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
-    BREAK_AFTER.add(0)
+    BREAK_AFTER = {
+        i for i, b in enumerate(blocks)
+        if b.dur_s >= break_min_dur
+        and not getattr(b, 'skip_ambient_bridge', False)
+    }
+    if blocks and not getattr(blocks[0], 'skip_ambient_bridge', False):
+        BREAK_AFTER.add(0)
     total = ffr_s + sum(b.dur_s for b in blocks)
     total += sum(float(getattr(b, 'quiet_before_s', 0) or 0) for b in blocks)
     total += len(BREAK_AFTER) * 20.0
@@ -164,8 +179,13 @@ def render_session(blocks: List[Block],
     Large carrier jumps keep fade-through-silence.
     Inserts structured quiet when block.quiet_before_s > 0.
     """
-    BREAK_AFTER = {i for i, b in enumerate(blocks) if b.dur_s >= break_min_dur}
-    BREAK_AFTER.add(0)
+    BREAK_AFTER = {
+        i for i, b in enumerate(blocks)
+        if b.dur_s >= break_min_dur
+        and not getattr(b, 'skip_ambient_bridge', False)
+    }
+    if blocks and not getattr(blocks[0], 'skip_ambient_bridge', False):
+        BREAK_AFTER.add(0)
 
     total_s = estimate_session_duration(blocks, break_min_dur=break_min_dur)
 
