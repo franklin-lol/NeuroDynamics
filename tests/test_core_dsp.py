@@ -155,9 +155,11 @@ def test_crossfade_silence_and_equal_power():
     "GATEWAY_EDGE", "CHAKRA_ASCENT",
 ])
 def test_profile_smoke(name):
+    from dataclasses import replace
     blocks = build_profile(name)
     assert len(blocks) >= 3
-    b = blocks[0]
+    # Shorten only for smoke speed — params/path stay identical
+    b = replace(blocks[0], dur_s=min(2.0, blocks[0].dur_s))
     L, R = b.render()
     peak = max(np.max(np.abs(L)), np.max(np.abs(R)))
     assert not np.any(np.isnan(L))
@@ -190,7 +192,8 @@ def test_chakra_ascent_ladder():
     assert elevs[0] < elevs[-1]
     crown = blocks[-1]
     assert crown.formant_morph_vowel == "M"
-    L, R = crown.render()
+    from dataclasses import replace
+    L, R = replace(crown, dur_s=2.0).render()
     assert not np.any(np.isnan(L))
     assert max(np.max(np.abs(L)), np.max(np.abs(R))) <= 0.56
 
@@ -205,3 +208,45 @@ def test_vowel_formants_and_silk():
     assert y.shape == x.shape
     assert z.shape == x.shape
     assert not np.any(np.isnan(z))
+
+
+def test_organic_atmosphere_and_drift():
+    from psychoacoustic.organic import (
+        organic_atmosphere, carrier_drift_hz, resolve_organic_style,
+        river_bed, singing_bowl_event)
+    from psychoacoustic.core import build_carrier
+
+    n = int(SR * 2.0)
+    drift = carrier_drift_hz(n, depth_hz=0.9, seed=7)
+    assert drift.shape == (n,)
+    assert np.max(np.abs(drift)) < 2.0
+
+    C = build_carrier(200, 210, n, jitter_depth=1.0, seed=1,
+                      drift_depth=0.8)
+    assert C.shape == (n,)
+    assert not np.any(np.isnan(C))
+
+    rL, rR = river_bed(2.0, vol=0.02, seed=2)
+    assert rL.shape == rR.shape
+    bL, bR = singing_bowl_event(3.0, 220.0, vol=0.04, seed=3)
+    assert np.max(np.abs(bL)) > 0
+
+    for style in ("rest", "sleep", "edge", "chakra", "minimal", "focus"):
+        oL, oR = organic_atmosphere(3.0, 200.0, style=style,
+                                    intensity=1.0, seed=9)
+        assert oL.shape == oR.shape
+        assert not np.any(np.isnan(oL))
+        peak = max(np.max(np.abs(oL)), np.max(np.abs(oR)))
+        assert peak <= 0.12
+
+    assert resolve_organic_style("WARRIOR — PEAK", 40, 40, 200, 200,
+                                 True, False) == "minimal"
+    assert resolve_organic_style("SLEEP — DEEP", 2, 2, 100, 100,
+                                 False, False) == "sleep"
+
+    b = Block(label="Organic Rest", dur_s=2.0, c0=200.0, b0=8.0,
+              use_organic=True, organic_style="rest",
+              use_carrier_drift=True, use_comfort_eq=True)
+    L, R = b.render()
+    assert not np.any(np.isnan(L))
+    assert max(np.max(np.abs(L)), np.max(np.abs(R))) <= 0.56

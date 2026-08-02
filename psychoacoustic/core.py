@@ -55,11 +55,22 @@ def jitter_envelope(sweep, depth, seed):
     return sweep + d * depth
 
 
-def build_carrier(c0, c1, n, jitter_depth=2.0, seed=0):
+def build_carrier(c0, c1, n, jitter_depth=2.0, seed=0,
+                  drift_depth=0.0, drift_rate=0.018):
+    """
+    Linear carrier sweep + pink micro-jitter.
+    Optional ultra-slow drift_depth (Hz) keeps the note alive without
+    altering the binaural beat difference.
+    """
     base = np.linspace(c0, c1, n, dtype=np.float64)
     d    = pink_noise(n, seed + 200).astype(np.float64)
     d   /= np.max(np.abs(d)) + 1e-9
-    return base + d * jitter_depth
+    out  = base + d * jitter_depth
+    if drift_depth and drift_depth > 0:
+        from .organic import carrier_drift_hz
+        out = out + carrier_drift_hz(n, depth_hz=float(drift_depth),
+                                     rate_hz=float(drift_rate), seed=seed + 211)
+    return out
 
 
 # ══════════════════════════════════════════════════════════

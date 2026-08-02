@@ -686,6 +686,8 @@ def _warrior():
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              organic_style='minimal', organic_intensity=0.40,
+              carrier_drift_hz=0.45, spectral_breath_mix=0.05,
               intro_fade_s=6.0,
               seed=91),
 
@@ -702,6 +704,8 @@ def _warrior():
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              organic_style='minimal', organic_intensity=0.35,
+              carrier_drift_hz=0.40, spectral_breath_mix=0.04,
               intro_fade_s=6.0,
               seed=92),
 
@@ -716,6 +720,7 @@ def _warrior():
               use_monaural=True, monaural_vol=0.045,
               use_saturate=True, saturate_drive=0.08,
               use_comfort_eq=True, block_gain=0.88,
+              organic_style='focus', organic_intensity=0.70,
               seed=93),
 
         Block(label='WARRIOR — THETA TOUCH', dur_s=480,
@@ -728,6 +733,7 @@ def _warrior():
               use_formant=True, formant_intensity=0.15,
               use_saturate=True, saturate_drive=0.08,
               use_comfort_eq=True, block_gain=0.85,
+              organic_style='rest', organic_intensity=0.85,
               seed=94),
 
         Block(label='WARRIOR — RELOAD', dur_s=600,
@@ -743,6 +749,8 @@ def _warrior():
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              organic_style='minimal', organic_intensity=0.38,
+              carrier_drift_hz=0.45, spectral_breath_mix=0.05,
               intro_fade_s=6.0,
               seed=95),
 
@@ -757,6 +765,8 @@ def _warrior():
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
+              organic_style='minimal', organic_intensity=0.35,
+              carrier_drift_hz=0.40, spectral_breath_mix=0.04,
               intro_fade_s=6.0,
               seed=96),
     ]

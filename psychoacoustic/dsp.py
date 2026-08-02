@@ -386,9 +386,12 @@ def dual_binaural(dur_s, c0, c1, b0, b1,
                   vol_p=0.60, vol_s=0.22,
                   carrier_jitter=2.0, beat_jitter=0.15,
                   seed=0, beat_array=None,
-                  carrier_type='sine'):
+                  carrier_type='sine',
+                  carrier_drift=0.0, carrier_drift_rate=0.018):
     n  = int(dur_s * SR)
-    C  = build_carrier(c0, c1, n, carrier_jitter, seed)
+    C  = build_carrier(c0, c1, n, carrier_jitter, seed,
+                       drift_depth=carrier_drift,
+                       drift_rate=carrier_drift_rate)
     B  = (np.asarray(beat_array[:n], dtype=np.float64) if beat_array is not None
           else jitter_envelope(log_sweep(b0, b1, n), beat_jitter, seed + 50))
     B2 = B / 2.0

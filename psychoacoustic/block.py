@@ -97,6 +97,16 @@ class Block:
     # ── Continuous underbed inside block
     use_underbed:       bool  = True
     underbed_vol:       float = 0.014
+    # ── Premium organic atmosphere (river / ghosts / bowls / drift)
+    # On by default for all profiles; WARRIOR auto-resolves to 'minimal'.
+    use_organic:        bool  = True
+    organic_style:      str   = 'auto'   # auto|rest|sleep|edge|focus|chakra|minimal
+    organic_intensity:  float = 1.0
+    use_carrier_drift:  bool  = True
+    carrier_drift_hz:   float = 0.85     # peak Hz wander (beat untouched)
+    carrier_drift_rate: float = 0.018
+    use_spectral_breath: bool = True     # mild wet LP morph on full mix
+    spectral_breath_mix: float = 0.10
     # ── AM depth budget cap (infra + respiratory combined)
     am_depth_cap:       float = 0.26
     # ── Master
@@ -143,11 +153,14 @@ class Block:
             B_raw  = np.clip(B_raw, 0.3, 120.0)
 
         # ── Base binaural
+        drift = self.carrier_drift_hz if self.use_carrier_drift else 0.0
         kw = dict(carrier_jitter=self.carrier_jitter,
                   beat_jitter=self.beat_jitter,
                   seed=self.seed,
                   beat_array=B_raw,
-                  carrier_type=self.carrier_type)
+                  carrier_type=self.carrier_type,
+                  carrier_drift=drift,
+                  carrier_drift_rate=self.carrier_drift_rate)
 
         if self.schumann_mode:
             L, R = schumann_stack(self.dur_s, self.c0,
@@ -265,6 +278,26 @@ class Block:
                                  seed=self.seed + 1200)
             L += bed; R += bed
 
+        # ── Premium organic atmosphere (river / ghosts / bowls)
+        if self.use_organic and self.organic_intensity > 0:
+            from .organic import organic_atmosphere, resolve_organic_style
+            ostyle = resolve_organic_style(
+                self.label, self.b0, self.b1, self.c0, self.c1,
+                self.allow_sharp_iso, self.use_focus_mix,
+                self.organic_style)
+            # Soft carriers prefer soft ghosts; keep organ less whistly
+            octype = 'soft' if self.carrier_type in ('sine', 'soft') else self.carrier_type
+            if octype == 'organ':
+                octype = 'warm'
+            oL, oR = organic_atmosphere(
+                self.dur_s,
+                carrier=0.5 * (float(self.c0) + float(self.c1)),
+                style=ostyle,
+                intensity=float(self.organic_intensity),
+                seed=self.seed + 1400,
+                ctype=octype)
+            L += oL; R += oR
+
         # ── LFO filter sweep
         if self.use_lfo_filter:
             L = lfo_filter(L, self.lfo_fc, self.lfo_depth,
@@ -289,6 +322,19 @@ class Block:
         if self.use_saturate:
             L = tube_saturate(L, self.saturate_drive)
             R = tube_saturate(R, self.saturate_drive)
+
+        # ── Mild spectral breath on full mix (organic living air)
+        if self.use_spectral_breath and self.spectral_breath_mix > 0:
+            from .organic import spectral_breath
+            # Keep quieter on sharp / high-carrier blocks
+            mix = float(self.spectral_breath_mix)
+            if self.allow_sharp_iso:
+                mix *= 0.45
+            cmax = max(float(self.c0), float(self.c1))
+            if cmax >= 700:
+                mix *= 0.7
+            L, R = spectral_breath(L, R, mix=mix, rate_hz=0.024,
+                                   seed=self.seed + 1500)
 
         # ── Anti-sizzle silk (stronger on high carriers — chakra upper / organ)
         if self.use_silk:
