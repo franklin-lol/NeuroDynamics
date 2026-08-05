@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
-from psychoacoustic.core import SR, crossfade_write
+from psychoacoustic.core import SR, crossfade_write, adaptive_drift_envelope
 from psychoacoustic.block import Block
 from psychoacoustic.dsp import (
     isochronic, schumann_stack, comfort_filter, ambient_bridge,
     ffr_prime_burst, monaural_beat_layer, soft_ceiling, budget_am_depths,
-    respiratory_entrainment_mod, _SCHUMANN_TAPER,
+    respiratory_entrainment_mod, _SCHUMANN_TAPER, room_reverb,
 )
 from psychoacoustic.profiles import build_profile
 from psychoacoustic.core import log_sweep
@@ -152,7 +152,7 @@ def test_crossfade_silence_and_equal_power():
 
 @pytest.mark.parametrize("name", [
     "GENESIS", "WALK", "SLEEP", "HEALER", "ORACLE", "WARRIOR",
-    "GATEWAY_EDGE", "CHAKRA_ASCENT", "DEEP_DIVE",
+    "GATEWAY_EDGE", "CHAKRA_ASCENT", "DEEP_DIVE_PRO_NIGHT",
 ])
 def test_profile_smoke(name):
     from dataclasses import replace
@@ -252,47 +252,89 @@ def test_organic_atmosphere_and_drift():
     assert max(np.max(np.abs(L)), np.max(np.abs(R))) <= 0.56
 
 
-def test_deep_dive_structure():
-    """DEEP_DIVE PRO: 9 blocks, all soft carrier, no carrier jumps, ~120 min."""
-    blocks = build_profile("DEEP_DIVE")
-    assert len(blocks) == 9
+def test_deep_dive_pro_night_structure():
+    """~120 min core, unbroken (skip_ambient_bridge), void-style throughout,
+    beat trends downward block-to-block, no iso/formant/schumann anywhere."""
+    blocks = build_profile("DEEP_DIVE_PRO_NIGHT")
     labels = [b.label for b in blocks]
-    assert any("SETTLE" in x for x in labels)
-    assert any("ABYSS" in x for x in labels)
-    assert any("F21" in x for x in labels)
-    assert any("F27" in x for x in labels)
-    assert any("SEAL" in x for x in labels)
+    for kw in ("PREP", "BODY OFF", "STABLE", "DEEP THETA", "LIMINAL",
+               "AUTO"):
+        assert any(kw in x for x in labels), f"missing phase: {kw}"
 
-    # All carriers stay at 200 Hz (no jumps = no silence gaps at night)
-    for b in blocks:
-        assert b.c0 == 200 and b.c1 == 200, f"{b.label} carrier not 200"
-
-    # All blocks skip ambient bridges
-    for b in blocks:
-        assert b.skip_ambient_bridge, f"{b.label} missing skip_ambient_bridge"
-
-    # At least 4 blocks use beat_ctrl (adaptive drift)
-    ctrl_count = sum(1 for b in blocks if b.beat_ctrl)
-    assert ctrl_count >= 4, f"Only {ctrl_count} beat_ctrl blocks"
-
-    # Total core time ~120 min (± tolerance)
     core = sum(b.dur_s for b in blocks)
-    assert 110 * 60 <= core <= 130 * 60, f"Core time {core/60:.1f} min"
+    assert 115 * 60 <= core <= 125 * 60
 
-    # Night-safe gains: all blocks <= 0.55
     for b in blocks:
-        assert b.block_gain <= 0.55, f"{b.label} gain {b.block_gain} too loud"
+        assert b.skip_ambient_bridge is True, b.label
+        assert b.organic_style == "void", b.label
+        assert not b.iso_layers, b.label
+        assert b.use_formant is False, b.label
+        assert b.schumann_mode is False, b.label
+        assert b.c0 == 200 and b.c1 == 200, "carrier must stay fixed " \
+            "(no jump -> renderer always uses equal-power join)"
+        assert b.beat_ctrl, f"{b.label} must drive beat via beat_ctrl, " \
+            "not log_sweep"
+
+    # Beat frequency must trend downward across the session (deepest last),
+    # comparing each block's OWN control-point endpoints (b0/b1 mirror them
+    # for display; dual_binaural ignores b0/b1 once beat_array is passed).
+    starts = [b.beat_ctrl[0][1] for b in blocks]
+    ends   = [b.beat_ctrl[-1][1] for b in blocks]
+    assert starts == sorted(starts, reverse=True)
+    assert ends == sorted(ends, reverse=True)
+    assert ends[0] > ends[-1]
+
+    # Only BODY OFF gets the F10-style body/cortex duality; nothing past it.
+    focus_flags = [b.use_focus_mix for b in blocks]
+    assert focus_flags == [False, True, False, False, False, False]
+
+    # Final block must actually taper toward silence (long exit ramp), not
+    # stop abruptly — this is a night session meant to end in sleep.
+    assert blocks[-1].outro_fade_s >= 120.0
 
 
-def test_deep_dive_beat_ctrl_render():
-    """Render a short beat_ctrl block from DEEP_DIVE — no NaN, within ceiling."""
-    from dataclasses import replace
-    blocks = build_profile("DEEP_DIVE")
-    # Pick the ABYSS block (has beat_ctrl)
-    abyss = next(b for b in blocks if "ABYSS" in b.label)
-    short = replace(abyss, dur_s=2.0)
-    L, R = short.render()
-    assert not np.any(np.isnan(L))
-    assert not np.any(np.isnan(R))
-    peak = max(np.max(np.abs(L)), np.max(np.abs(R)))
-    assert peak <= 0.56, f"Peak {peak} exceeds ceiling"
+def test_deep_dive_void_style_zero_events():
+    """'void' must never produce a bowl/bell strike, at any intensity —
+    checked at both the low-level scheduler and the full atmosphere mix."""
+    from psychoacoustic.organic import schedule_resonant_events, organic_atmosphere
+    for intensity in (0.1, 1.0, 5.0):
+        L, R = schedule_resonant_events(4.0, 200.0, "void",
+                                        intensity=intensity, seed=1)
+        assert np.max(np.abs(L)) == 0.0
+        assert np.max(np.abs(R)) == 0.0
+    oL, oR = organic_atmosphere(4.0, 200.0, style="void",
+                                intensity=1.0, seed=1)
+    assert not np.any(np.isnan(oL))
+    # Still non-silent overall (continuous river/ghost bed keeps it "alive")
+    assert np.max(np.abs(oL)) > 0.0
+
+
+def test_adaptive_drift_envelope_shape():
+    """Dwell-then-small-step contract: plateaus honored at their fractions,
+    per-sample step stays smooth (no clicks), stays within clip bounds."""
+    n = int(20 * SR)  # short stand-in duration; control points are fractional
+    ctrl = [(0.0, 6.0), (0.24, 6.0), (0.27, 5.5), (0.51, 5.5),
+           (0.54, 5.0), (0.78, 5.0), (0.81, 4.5), (1.0, 4.5)]
+    B = adaptive_drift_envelope(n, ctrl, micro_amp=0.07, micro_rate=0.009,
+                                seed=1)
+    assert B.shape == (n,)
+    assert not np.any(np.isnan(B))
+    assert np.max(np.abs(np.diff(B))) < 0.01, "per-sample jump too sharp"
+    for frac, expected in ((0.10, 6.0), (0.40, 5.5), (0.65, 5.0),
+                          (0.95, 4.5)):
+        assert abs(B[int(frac * n)] - expected) < 0.3
+    assert B.min() >= 0.3 and B.max() <= 120.0
+
+
+def test_room_reverb_channels_independent_and_decaying():
+    """Regression guard for the ir[::-1] fix: R must not mirror L, and both
+    channels must show a decaying (not rising) impulse response."""
+    n = int(0.2 * SR)
+    imp = np.zeros(n, dtype=np.float32)
+    imp[0] = 1.0
+    L, R = room_reverb(imp, imp, rt60_ms=700.0, wet=1.0, seed=42)
+    assert not np.allclose(R[:2000], L[:2000][::-1])
+    assert np.argmax(np.abs(L)) < 50
+    assert np.argmax(np.abs(R)) < 50
+    assert np.mean(np.abs(L[-100:])) < np.mean(np.abs(L[:100]))
+    assert np.mean(np.abs(R[-100:])) < np.mean(np.abs(R[:100]))

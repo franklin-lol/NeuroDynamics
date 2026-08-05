@@ -333,10 +333,15 @@ class Block:
                 morph_vowel=self.formant_morph_vowel,
                 morph_s=self.formant_morph_s)
 
-        # ── Tube saturation
+        # ── Tube saturation (drive breathes slowly — thermal-drift feel,
+        #    not a fixed clip level for the whole block)
         if self.use_saturate:
-            L = tube_saturate(L, self.saturate_drive)
-            R = tube_saturate(R, self.saturate_drive)
+            from .organic import _smooth_wander
+            n_sat = len(L)
+            wander = _smooth_wander(n_sat, self.seed + 1700, cutoff=0.045)
+            drive_t = self.saturate_drive * (1.0 + 0.25 * wander)
+            L = tube_saturate(L, drive_t)
+            R = tube_saturate(R, drive_t)
 
         # ── Mild spectral breath on full mix (organic living air)
         if self.use_spectral_breath and self.spectral_breath_mix > 0:
@@ -402,7 +407,8 @@ class Block:
         if self.use_reverb:
             L, R = room_reverb(L, R,
                                rt60_ms=self.reverb_rt60,
-                               wet=self.reverb_wet)
+                               wet=self.reverb_wet,
+                               seed=self.seed + 1600)
 
         # ── Soft block intro/outro (prevents post-quiet "slam")
         n = len(L)

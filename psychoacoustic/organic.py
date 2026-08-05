@@ -103,7 +103,7 @@ def harmonic_ghosts(dur_s: float, carrier: float, vol: float = 0.028,
         (3.0, 0.28, 0.007 + rng.uniform(-0.0015, 0.0015), 0.055),
         (0.5, 0.18, 0.009 + rng.uniform(-0.002, 0.002), 0.03),  # sub-octave ghost
     )
-    for ratio, gain, rate, det_hz in specs:
+    for i, (ratio, gain, rate, det_hz) in enumerate(specs):
         f = float(carrier) * ratio
         if f < 40.0 or f > 4200.0:
             continue
@@ -111,7 +111,11 @@ def harmonic_ghosts(dur_s: float, carrier: float, vol: float = 0.028,
         det_R = -det_hz * (0.6 + 0.4 * np.sin(2 * np.pi * rate * 0.41 * t + 1.1))
         ph_L = 2 * np.pi * np.cumsum(f + det_L) / SR
         ph_R = 2 * np.pi * np.cumsum(f + det_R) / SR + 0.17
-        am = 0.55 + 0.45 * np.sin(2 * np.pi * rate * t + seed * 0.2)
+        # Sine + slow noise-wander AM (non-periodic breathing per partial,
+        # decorrelated across partials via the +i seed offset)
+        ghost_wander = _smooth_wander(n, seed + 50 + i, cutoff=0.02)
+        am = (0.52 + 0.36 * np.sin(2 * np.pi * rate * t + seed * 0.2)
+              + 0.12 * ghost_wander)
         # Soften high ghosts
         hi_attn = 1.0 if f < 900 else (0.55 if f < 1800 else 0.28)
         g = gain * hi_attn * am
@@ -228,11 +232,14 @@ def river_bed(dur_s: float, vol: float = 0.022, seed: int = 0) -> tuple:
     sos_bp = butter(2, [lo, hi], btype='band', output='sos')
     sparkle = sosfilt(sos_bp, sparkle).astype(np.float64)
 
-    # Soft bubble AM (irregular)
-    am = 0.72 + 0.28 * (
+    # Bubble AM: periodic-ish sine pair + a slow filtered-noise macro-swell
+    # (river bubbling isn't perfectly periodic — the wander term is what
+    # keeps it from sounding like a two-oscillator LFO loop).
+    wander = _smooth_wander(n, seed + 21, cutoff=0.025)
+    am = 0.60 + 0.20 * (
         0.55 * np.sin(2 * np.pi * 0.07 * t + seed * 0.2)
         + 0.45 * np.sin(2 * np.pi * 0.031 * t + 1.4)
-    )
+    ) + 0.16 * wander
     mono = (0.72 * flow + 0.28 * sparkle) * am
 
     # Decorrelate R with short allpass-ish delay + different seed noise mix
@@ -305,7 +312,13 @@ def schedule_resonant_events(dur_s: float, carrier: float,
         return L, R
 
     rng = _rng(seed + 40)
-    if style == 'minimal':
+    if style == 'void':
+        # DEEP DIVE PRO: zero discrete events, always — independent of
+        # whatever intensity the caller passes (organic_atmosphere already
+        # zeroes it via _STYLE_MIX's ev_scale, but a direct caller must not
+        # silently inherit 'rest' bowl_p=0.65 through the else-branch below).
+        return L, R
+    elif style == 'minimal':
         mean_gap, bowl_p, vol_scale = 95.0, 0.25, 0.55
     elif style == 'sleep':
         mean_gap, bowl_p, vol_scale = 70.0, 0.75, 0.85
@@ -364,6 +377,9 @@ _STYLE_MIX = {
     'focus':   (0.010, 0.018, 0.55),
     'chakra':  (0.014, 0.030, 1.10),
     'minimal': (0.006, 0.012, 0.35),
+    # DEEP DIVE PRO: continuous bed only — events HARD-ZEROED (no bowl/bell
+    # strike is a "discrete event" the liminal/auto phases must not produce).
+    'void':    (0.010, 0.016, 0.00),
 }
 
 
@@ -421,6 +437,8 @@ def resolve_organic_style(label: str, b0: float, b1: float, c0: float, c1: float
     if style and style != 'auto':
         return style
     lab = (label or '').upper()
+    if 'DEEP DIVE' in lab or 'DEEP_DIVE' in lab:
+        return 'void'
     if allow_sharp_iso or max(b0, b1) >= 28.0 or 'WARRIOR' in lab:
         return 'minimal'
     if 'SLEEP' in lab or max(b0, b1) <= 3.2:

@@ -32,6 +32,8 @@
 | φ-layer | Гармонический / геометрический слой носителя и биения |
 | FocusMix | Dual-frequency stacking по мотивам Focus-10 (тело/delta + кора/alpha-beta), без EEG-подтверждения |
 | `CHAKRA_ASCENT` 396–963 Hz | Нумерологическое соответствие (Puleo/Horowitz) + sound-healing традиция; не физическое свойство тканей/энергоцентров; символический/интенциональный слой |
+| `beat_ctrl` / `adaptive_drift_envelope` | Детерминированные dwell-плато + независимый мульти-темповый micro-wander вместо непрерывного log_sweep; гипотеза устойчивости к габитуации слуховой системы, не доказанное усиление глубины состояния |
+| `DEEP_DIVE_PRO_NIGHT` «за F21/27» | Инженерная цель: дольше непрерывного времени на цели при более низкой/стабильной частоте биения и нулевом внешнем ведении — НЕ заявление о достижении конкретного проверенного уровня сознания |
 
 Эффекты субъективны. Для бинаурала нужны **проводные** стерео-наушники. Рекомендуемая громкость **15–30%**. Не медицинское изделие.
 
@@ -43,7 +45,7 @@
 | **Sharp-safe** | WARRIOR | Выше энергия gamma/ASSR, soft-gate + ceiling, ComfortEQ только на descent |
 | **Gateway Edge** | GATEWAY_EDGE (~31 мин) | F10→F12→F15→soft interrupt→F21 touch→seal |
 | **Chakra** | CHAKRA_ASCENT (~37 мин) | 396→963 + elevation ladder + vowel formants (symbolic) |
-| **Deep Dive PRO** | DEEP_DIVE (~120 мин) | F10→F21→F27+ adaptive drift · ночной · без чаш/bridges · gain ≤0.52 |
+| **Deep Dive Pro** | DEEP_DIVE_PRO_NIGHT (~121 мин) | Один непрерывный ночной спуск PREP→BODY OFF→STABLE→DEEP→LIMINAL→AUTO/VOID, adaptive-drift beat, `void`-стиль (0 bowl/bell событий), 4-мин fade в тишину на выходе |
 
 ## Архитектура сессий
 
@@ -59,8 +61,8 @@
 
 *   **Оборудование:** только проводные наушники.  
 *   **Громкость:** 15–30%. Звук должен оставаться комфортным часами (permanent).  
-*   **Положение:** лёжа / полулёжа (SLEEP/HEALER/ORACLE/GATEWAY_EDGE/DEEP_DIVE); WARRIOR — сидя/стоя.  
-*   **Регулярность:** глубокие профили — не чаще 1× / 48 ч; **GATEWAY_EDGE** — 1× / 1–2 нед; **DEEP_DIVE** — 1× / неделю; после SEAL — 10 мин тишины.
+*   **Положение:** лёжа / полулёжа (SLEEP/HEALER/ORACLE/GATEWAY_EDGE/DEEP_DIVE_PRO_NIGHT); WARRIOR — сидя/стоя.  
+*   **Регулярность:** глубокие профили — не чаще 1× / 48 ч; **GATEWAY_EDGE** — 1× / 1–2 нед; **DEEP_DIVE_PRO_NIGHT** — 1× / 1–2 нед (глубже и длиннее EDGE); после SEAL/финального fade — 5–10 мин тишины.
 
 ## Структура проекта
 

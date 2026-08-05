@@ -10,6 +10,12 @@ Sharp-safe (WARRIOR):
 
 Gateway Edge (~30 min):
   F10 → F12 → F15 → interrupt → F21 touch → seal
+
+Deep Dive Pro Night (~121 min):
+  PREP → BODY OFF → STABLE THETA → DEEP THETA → LIMINAL → AUTO/VOID
+  Fixed carrier, beat_ctrl/adaptive_drift_envelope throughout, void-style
+  organic bed (events hard-zeroed), skip_ambient_bridge — one unbroken
+  descent, ends in a 4-minute taper to silence.
 """
 
 from .block import Block
@@ -27,13 +33,14 @@ def build_profile(name: str):
         return _gateway_edge()
     elif n in ('CHAKRA_ASCENT', 'CHAKRA', 'ASCENT'):
         return _chakra_ascent()
-    elif n in ('DEEP_DIVE', 'DEEPDIVE', 'DEEP', 'PRO'):
-        return _deep_dive()
+    elif n in ('DEEP_DIVE_PRO_NIGHT', 'DEEP_DIVE_PRO', 'DEEP_DIVE',
+               'DEEP_DIVE_NIGHT'):
+        return _deep_dive_pro_night()
     else:
         raise ValueError(
             f"Unknown profile '{name}'. "
             f"Use: GENESIS WALK SLEEP HEALER ORACLE WARRIOR "
-            f"GATEWAY_EDGE CHAKRA_ASCENT DEEP_DIVE")
+            f"GATEWAY_EDGE CHAKRA_ASCENT DEEP_DIVE_PRO_NIGHT")
 
 
 # ══════════════════════════════════════════════════════════
@@ -998,316 +1005,193 @@ def _chakra_ascent():
 
 
 # ══════════════════════════════════════════════════════════
-#  DEEP DIVE PRO — ~120 min night session
-#  F10→F12→F15→F21→F27+ with adaptive beat drift.
-#  No bowls, no sharp sounds, no ambient bridges.
-#  Designed for maximum depth without body startle.
+#  DEEP DIVE PRO NIGHT — ~121 min
+#
+#  Habituation-resistant descent past the GATEWAY_EDGE ladder:
+#    PREP → BODY OFF → STABLE THETA → DEEP THETA → LIMINAL → AUTO/VOID
+#
+#  · Single fixed 200 Hz carrier for the WHOLE session — no carrier jump
+#    anywhere, so every join is equal-power (renderer._carrier_jump never
+#    fires) instead of fade-through-silence. That is the actual mechanism
+#    behind "no sudden sounds," not a volume rule layered on top.
+#  · Beat path is 100% beat_ctrl → adaptive_drift_envelope, never log_sweep:
+#    long dwell plateaus connected by short (~1 min) glides, plus
+#    independent multi-rate micro-wander. Never a metronomic ramp.
+#  · organic_style='void': continuous river/ghost bed stays, bowl/bell
+#    EVENTS are hard-zeroed (events-mix = 0.0 in _STYLE_MIX). A session
+#    whose entire premise is "nothing happens" cannot also schedule
+#    occasional bowl strikes — those are exactly the discrete, attention-
+#    grabbing events Phase 4/5 of the design brief rules out.
+#  · No iso layers, no formant/vowel, no schumann stack. use_focus_mix only
+#    in BODY OFF (the one phase that is actually Monroe F10's body/cortex
+#    duality) — structure is deliberately stripped phase by phase, mirroring
+#    "не вести пользователя вообще" for LIMINAL/AUTO.
+#  · skip_ambient_bridge=True on every block: this is one unbroken descent,
+#    not GENESIS/EDGE-style movements separated by 20s ambient bridges.
+#  · quiet_before_s placed before DEEP THETA / LIMINAL / AUTO — structured
+#    near-silence before each further descent (same convention as
+#    GATEWAY_EDGE's F15/INTERRUPT/F21, README's "quiet before void/OBE").
+#  · AUTO/VOID's outro_fade_s=240 is a real 4-minute exit ramp to silence —
+#    a night session should end IN sleep, not stop abruptly.
+#
+#  Honest framing (see README): this is NOT validated to reach any specific
+#  numbered "Focus level," and going "past F21/27" is understood here as
+#  engineering — longer uninterrupted time-on-target at a lower, steadier
+#  beat frequency with zero external redirection — not a claim about
+#  reaching a specific verified state of consciousness.
 # ══════════════════════════════════════════════════════════
 
-def _deep_dive():
+def _deep_dive_pro_night():
     return [
-        # ── PHASE 1: SETTLE — body release, alpha→theta (F10)
-        # 10 min. Slow breath ramp down. Carrier stays 200 Hz entire session
-        # (no carrier jumps = no crossfade silence gaps).
+        # ── PREP — settle: alpha → alpha/theta border. Nothing structured
+        #    yet; just less internal noise.
         Block(
-            label='DIVE — SETTLE', dur_s=600,
-            c0=200, c1=200, b0=10.0, b1=6.0,
-            carrier_type='soft',
-            carrier_jitter=0.4, beat_jitter=0.05,
-            noise_pw=0.6, noise_bw=0.4,
-            use_focus_mix=True,
-            focus_body_beat=2.0, focus_cortex_beat=10.0,
-            focus_vol_body=0.06, focus_vol_cortex=0.04,
-            use_monaural=True, monaural_vol=0.03,
-            use_drone=True, drone_vol=0.06, drone_detune=0.10,
-            use_wind=True, wind_vol=0.04, wind_bw=12.0,
-            infra_freq=0.083, infra_depth=0.08,
-            use_respiratory=True, breath_bpm=5.5, breath_bpm_end=4.5,
-            breath_depth=0.11,
-            use_formant=True, formant_intensity=0.10,
-            use_saturate=True, saturate_drive=0.06,
-            use_comfort_eq=True, block_gain=0.52,
-            underbed_vol=0.014,
-            skip_ambient_bridge=True,
-            intro_fade_s=18.0, outro_fade_s=12.0,
-            seed=401,
-        ),
-
-        # ── PHASE 2: DRIFT — expanded awareness (F12)
-        # 12 min. Schumann anchor, θ corridor, granular texture.
-        Block(
-            label='DIVE — DRIFT', dur_s=720,
-            c0=200, c1=200, b0=6.0, b1=4.5,
-            carrier_type='soft',
-            carrier_jitter=0.6, beat_jitter=0.06,
-            noise_pw=0.3, noise_bw=0.7,
-            iso_layers=[(7.83, 200, 0.035, 18, 18)],
-            cfc_theta=7.83, cfc_strength=0.25,
-            use_phi=True,
-            use_hrtf=True, hrtf_az_sweep=0.0, hrtf_elevation=5.0,
-            itd_period=18.0,
-            use_monaural=True, monaural_vol=0.03,
-            use_drone=True, drone_vol=0.06,
-            use_wind=True, wind_vol=0.045, wind_bw=11.0,
-            infra_freq=0.067, infra_depth=0.09,
-            use_respiratory=True, breath_bpm=4.5, breath_bpm_end=4.0,
-            breath_depth=0.12,
-            use_formant=True, formant_intensity=0.10, formant_vowel='O',
-            use_saturate=True, saturate_drive=0.06,
-            use_reverb=True, reverb_rt60=700.0, reverb_wet=0.07,
-            use_comfort_eq=True, block_gain=0.50,
-            underbed_vol=0.016,
-            skip_ambient_bridge=True,
-            intro_fade_s=14.0, outro_fade_s=12.0,
-            silk_cutoff_hz=5000.0,
-            seed=402,
-        ),
-
-        # ── PHASE 3: DESCENT — F15 no-time approach
-        # 15 min. Beat drifts theta→deep-theta. Adaptive path starts here.
-        Block(
-            label='DIVE — DESCENT', dur_s=900,
-            c0=200, c1=200, b0=4.5, b1=2.5,
-            carrier_type='soft',
-            carrier_jitter=0.8, beat_jitter=0.08,
-            noise_pw=0.1, noise_bw=0.9,
-            cfc_theta=5.0, cfc_strength=0.32,
-            use_granular=True, granular_grain_ms=150.0,
-            granular_density=4.0, granular_pitch_st=0.08,
-            granular_scatter=0.60, granular_vol=0.035,
-            use_focus_mix=True,
-            focus_body_beat=1.5, focus_cortex_beat=7.0,
-            focus_vol_body=0.05, focus_vol_cortex=0.035,
-            use_wind=True, wind_vol=0.04, wind_bw=10.0,
-            infra_freq=0.05, infra_depth=0.10,
-            phase_lock=True, phase_lock_depth=0.10,
-            use_respiratory=True, breath_bpm=4.0, breath_depth=0.13,
-            use_formant=True, formant_intensity=0.08, formant_vowel='O',
-            use_reverb=True, reverb_rt60=850.0, reverb_wet=0.08,
-            use_comfort_eq=True, block_gain=0.48,
-            underbed_vol=0.018,
-            skip_ambient_bridge=True,
-            quiet_before_s=30.0,
-            intro_fade_s=16.0, outro_fade_s=14.0,
-            silk_cutoff_hz=4800.0,
-            seed=403,
-        ),
-
-        # ── PHASE 4: ABYSS — F21 approach
-        # 20 min. Adaptive beat drift: theta→sub-delta meander.
-        # No isochronic at all — pure binaural + texture.
-        Block(
-            label='DIVE — ABYSS', dur_s=1200,
-            c0=200, c1=200,
-            beat_ctrl=[
-                (0.00, 2.5),   # start from descent floor
-                (0.12, 1.8),   # slow glide
-                (0.30, 1.2),   # deep delta
-                (0.50, 0.8),   # sub-delta territory
-                (0.70, 1.0),   # gentle micro-rise (anti-habituation)
-                (0.85, 0.6),   # deeper again
-                (1.00, 0.5),   # F21 floor
-            ],
-            beat_micro_amp=0.15,
-            beat_micro_rate=0.010,
-            carrier_type='soft',
-            carrier_jitter=1.0, beat_jitter=0.0,
-            noise_pw=0.0, noise_bw=1.0,
-            cfc_theta=4.0, cfc_strength=0.35,
-            use_granular=True, granular_grain_ms=180.0,
-            granular_density=3.0, granular_pitch_st=0.06,
-            granular_scatter=0.70, granular_vol=0.03,
-            use_wind=True, wind_vol=0.035, wind_bw=9.0,
-            infra_freq=0.033, infra_depth=0.11,
-            phase_lock=True, phase_lock_depth=0.12,
-            use_respiratory=True, breath_bpm=4.0, breath_depth=0.13,
-            use_formant=True, formant_intensity=0.07, formant_vowel='U',
-            use_reverb=True, reverb_rt60=1000.0, reverb_wet=0.08,
-            use_comfort_eq=True, block_gain=0.46,
-            underbed_vol=0.018,
-            skip_ambient_bridge=True,
-            quiet_before_s=40.0,
-            intro_fade_s=18.0, outro_fade_s=16.0,
-            silk_cutoff_hz=4500.0,
-            seed=404,
-        ),
-
-        # ── PHASE 5: F21 HOLD — sustained depth
-        # 15 min. Ultra-stable sub-delta with focus_mix dual-state
-        # (body delta, cortex low-theta — lucid depth).
-        Block(
-            label='DIVE — F21 HOLD', dur_s=900,
-            c0=200, c1=200,
-            beat_ctrl=[
-                (0.00, 0.5),
-                (0.25, 0.7),   # tiny micro-rise
-                (0.50, 0.5),
-                (0.75, 0.6),
-                (1.00, 0.5),
-            ],
-            beat_micro_amp=0.12,
-            beat_micro_rate=0.008,
-            carrier_type='soft',
-            carrier_jitter=1.2, beat_jitter=0.0,
-            noise_pw=0.0, noise_bw=1.0,
-            cfc_theta=3.5, cfc_strength=0.40,
-            use_focus_mix=True,
-            focus_body_beat=1.0, focus_cortex_beat=5.5,
-            focus_vol_body=0.045, focus_vol_cortex=0.03,
-            use_granular=True, granular_grain_ms=200.0,
-            granular_density=2.5, granular_pitch_st=0.05,
-            granular_scatter=0.75, granular_vol=0.025,
-            use_wind=True, wind_vol=0.03, wind_bw=8.0,
-            infra_freq=0.025, infra_depth=0.12,
-            phase_lock=True, phase_lock_depth=0.14,
-            use_respiratory=True, breath_bpm=4.0, breath_depth=0.14,
-            use_formant=True, formant_intensity=0.06, formant_vowel='U',
-            formant_morph_vowel='M', formant_morph_s=40.0,
-            use_reverb=True, reverb_rt60=1100.0, reverb_wet=0.09,
-            use_comfort_eq=True, block_gain=0.44,
-            underbed_vol=0.018,
-            skip_ambient_bridge=True,
-            intro_fade_s=16.0, outro_fade_s=14.0,
-            silk_cutoff_hz=4200.0,
-            seed=405,
-        ),
-
-        # ── PHASE 6: F27 APPROACH — beyond-body territory
-        # 12 min. Adaptive drift to ultra-low. Phi layer engaged.
-        Block(
-            label='DIVE — F27 APPROACH', dur_s=720,
-            c0=200, c1=200,
-            beat_ctrl=[
-                (0.00, 0.5),
-                (0.20, 0.4),
-                (0.45, 0.35),
-                (0.70, 0.5),   # anti-habituation bump
-                (0.90, 0.3),
-                (1.00, 0.3),
-            ],
-            beat_micro_amp=0.10,
-            beat_micro_rate=0.007,
-            carrier_type='soft',
-            carrier_jitter=1.5, beat_jitter=0.0,
-            noise_pw=0.0, noise_bw=1.0,
-            cfc_theta=3.0, cfc_strength=0.42,
-            use_phi=True,
-            use_granular=True, granular_grain_ms=220.0,
-            granular_density=2.0, granular_pitch_st=0.04,
-            granular_scatter=0.80, granular_vol=0.02,
-            use_wind=True, wind_vol=0.025, wind_bw=7.0,
-            infra_freq=0.020, infra_depth=0.12,
-            phase_lock=True, phase_lock_depth=0.16,
-            use_respiratory=True, breath_bpm=4.0, breath_depth=0.14,
-            use_formant=True, formant_intensity=0.05, formant_vowel='U',
-            formant_morph_vowel='M', formant_morph_s=30.0,
-            use_reverb=True, reverb_rt60=1200.0, reverb_wet=0.09,
-            use_comfort_eq=True, block_gain=0.42,
-            underbed_vol=0.016,
-            skip_ambient_bridge=True,
-            quiet_before_s=50.0,
-            intro_fade_s=18.0, outro_fade_s=16.0,
-            silk_cutoff_hz=4000.0,
-            seed=406,
-        ),
-
-        # ── PHASE 7: F27 CORE — deepest sustained hold
-        # 18 min. Minimal texture, maximum depth.
-        # beat_ctrl micro-meanders around 0.3 Hz.
-        Block(
-            label='DIVE — F27 CORE', dur_s=1080,
-            c0=200, c1=200,
-            beat_ctrl=[
-                (0.00, 0.3),
-                (0.15, 0.35),
-                (0.30, 0.25),
-                (0.50, 0.3),
-                (0.65, 0.4),   # gentle nudge
-                (0.80, 0.3),
-                (0.95, 0.25),
-                (1.00, 0.3),
-            ],
-            beat_micro_amp=0.08,
-            beat_micro_rate=0.006,
-            carrier_type='soft',
-            carrier_jitter=1.8, beat_jitter=0.0,
-            noise_pw=0.0, noise_bw=1.0,
-            cfc_theta=2.5, cfc_strength=0.45,
-            use_phi=True,
-            use_focus_mix=True,
-            focus_body_beat=0.5, focus_cortex_beat=4.0,
-            focus_vol_body=0.04, focus_vol_cortex=0.025,
-            use_granular=True, granular_grain_ms=250.0,
-            granular_density=1.5, granular_pitch_st=0.03,
-            granular_scatter=0.85, granular_vol=0.018,
-            use_wind=True, wind_vol=0.02, wind_bw=6.0,
-            infra_freq=0.017, infra_depth=0.13,
-            phase_lock=True, phase_lock_depth=0.18,
-            use_respiratory=True, breath_bpm=4.0, breath_depth=0.14,
-            use_formant=True, formant_intensity=0.04, formant_vowel='M',
-            use_reverb=True, reverb_rt60=1300.0, reverb_wet=0.10,
-            use_comfort_eq=True, block_gain=0.40,
-            underbed_vol=0.016,
-            skip_ambient_bridge=True,
-            intro_fade_s=20.0, outro_fade_s=18.0,
-            silk_cutoff_hz=3800.0,
-            seed=407,
-        ),
-
-        # ── PHASE 8: RETURN DRIFT — slow resurface
-        # 10 min. Delta→theta gentle ascent. Body re-anchoring.
-        Block(
-            label='DIVE — RETURN', dur_s=600,
-            c0=200, c1=200,
-            beat_ctrl=[
-                (0.00, 0.3),
-                (0.20, 0.8),
-                (0.45, 1.5),
-                (0.65, 2.5),
-                (0.80, 4.0),
-                (1.00, 6.0),
-            ],
-            beat_micro_amp=0.10,
-            beat_micro_rate=0.010,
-            carrier_type='soft',
-            carrier_jitter=0.8, beat_jitter=0.0,
-            noise_pw=0.2, noise_bw=0.8,
-            use_drone=True, drone_vol=0.05,
-            use_wind=True, wind_vol=0.035, wind_bw=10.0,
-            infra_freq=0.05, infra_depth=0.09,
-            use_respiratory=True, breath_bpm=4.0, breath_bpm_end=5.0,
-            breath_depth=0.12,
-            use_formant=True, formant_intensity=0.08, formant_vowel='O',
-            formant_morph_vowel='A', formant_morph_s=45.0,
-            use_reverb=True, reverb_rt60=800.0, reverb_wet=0.07,
-            use_comfort_eq=True, block_gain=0.46,
-            underbed_vol=0.014,
-            skip_ambient_bridge=True,
-            intro_fade_s=16.0, outro_fade_s=14.0,
-            silk_cutoff_hz=4800.0,
-            seed=408,
-        ),
-
-        # ── PHASE 9: SEAL — gentle alpha return
-        # 8 min. Theta→alpha. Breath rises. Session closure.
-        Block(
-            label='DIVE — SEAL', dur_s=480,
-            c0=200, c1=200, b0=6.0, b1=10.0,
-            carrier_type='soft',
-            carrier_jitter=0.5, beat_jitter=0.05,
-            noise_pw=0.5, noise_bw=0.5,
-            use_monaural=True, monaural_vol=0.025,
-            use_drone=True, drone_vol=0.05, drone_detune=0.10,
-            use_wind=True, wind_vol=0.035,
-            infra_freq=0.067, infra_depth=0.08,
-            use_respiratory=True, breath_bpm=5.0, breath_bpm_end=6.0,
+            label='DEEP DIVE — PREP', dur_s=480,
+            c0=200, c1=200, b0=11.2, b1=9.4,
+            carrier_type='soft', carrier_jitter=0.8, beat_jitter=0.05,
+            noise_pw=0.85, noise_bw=0.15,
+            beat_ctrl=[(0.0, 11.2), (1.0, 9.4)],
+            beat_micro_amp=0.05, beat_micro_rate=0.012,
+            use_monaural=True, monaural_vol=0.030,
+            use_respiratory=True, breath_bpm=6.0, breath_bpm_end=5.6,
             breath_depth=0.10,
-            use_formant=True, formant_intensity=0.08, formant_vowel='A',
-            use_saturate=True, saturate_drive=0.05,
-            use_comfort_eq=True, block_gain=0.44,
-            underbed_vol=0.012,
+            infra_freq=0.030, infra_depth=0.080,
+            itd_period=100.0,
+            use_carrier_drift=True, carrier_drift_hz=0.60,
+            use_underbed=True, underbed_vol=0.014,
+            use_organic=True, organic_style='void', organic_intensity=0.85,
+            use_saturate=True, saturate_drive=0.050,
+            use_reverb=True, reverb_wet=0.050, reverb_rt60=700.0,
+            use_comfort_eq=True, block_gain=0.58,
+            intro_fade_s=20.0, outro_fade_s=30.0,
             skip_ambient_bridge=True,
-            intro_fade_s=14.0, outro_fade_s=20.0,
-            seed=409,
+            seed=501
+        ),
+        # ── BODY OFF — analog Focus 10: body/cortex duality, then let it go
+        Block(
+            label='DEEP DIVE — BODY OFF', dur_s=1080,
+            c0=200, c1=200, b0=9.4, b1=6.4,
+            carrier_type='soft', carrier_jitter=0.7, beat_jitter=0.06,
+            noise_pw=0.75, noise_bw=0.25,
+            beat_ctrl=[(0.0, 9.4), (1.0, 6.4)],
+            beat_micro_amp=0.06, beat_micro_rate=0.011,
+            use_focus_mix=True, focus_body_beat=2.2, focus_cortex_beat=8.5,
+            focus_vol_body=0.07, focus_vol_cortex=0.05,
+            use_monaural=True, monaural_vol=0.035,
+            use_respiratory=True, breath_bpm=5.6, breath_bpm_end=5.0,
+            breath_depth=0.11,
+            infra_freq=0.035, infra_depth=0.090,
+            itd_period=120.0,
+            use_carrier_drift=True, carrier_drift_hz=0.55,
+            use_underbed=True, underbed_vol=0.015,
+            use_organic=True, organic_style='void', organic_intensity=0.70,
+            use_saturate=True, saturate_drive=0.055,
+            use_reverb=True, reverb_wet=0.060, reverb_rt60=750.0,
+            use_comfort_eq=True, block_gain=0.55,
+            intro_fade_s=25.0, outro_fade_s=30.0,
+            skip_ambient_bridge=True,
+            seed=502
+        ),
+        # ── STABLE THETA — analog Focus 12: hold. No focus_mix, no motion
+        #    beyond the drift floor — nothing to re-orient toward.
+        Block(
+            label='DEEP DIVE — STABLE THETA', dur_s=1500,
+            c0=200, c1=200, b0=6.4, b1=6.0,
+            carrier_type='soft', carrier_jitter=0.5, beat_jitter=0.04,
+            noise_pw=0.65, noise_bw=0.35,
+            beat_ctrl=[(0.0, 6.4), (1.0, 6.0)],
+            beat_micro_amp=0.045, beat_micro_rate=0.010,
+            use_monaural=True, monaural_vol=0.035,
+            use_respiratory=True, breath_bpm=5.0, breath_bpm_end=4.6,
+            breath_depth=0.12,
+            infra_freq=0.040, infra_depth=0.095,
+            itd_period=140.0,
+            use_carrier_drift=True, carrier_drift_hz=0.50,
+            use_underbed=True, underbed_vol=0.015,
+            use_organic=True, organic_style='void', organic_intensity=0.55,
+            use_saturate=True, saturate_drive=0.050,
+            use_reverb=True, reverb_wet=0.060, reverb_rt60=800.0,
+            use_comfort_eq=True, block_gain=0.50,
+            intro_fade_s=30.0, outro_fade_s=30.0,
+            skip_ambient_bridge=True,
+            seed=503
+        ),
+        # ── DEEP THETA — analog Focus 15: "living stillness" — ~7-8 min
+        #    dwell plateaus connected by ~1 min glides. Never a metronome.
+        Block(
+            label='DEEP DIVE — DEEP THETA', dur_s=1800,
+            c0=200, c1=200, b0=6.0, b1=4.5,
+            carrier_type='soft', carrier_jitter=0.4, beat_jitter=0.04,
+            noise_pw=0.55, noise_bw=0.45,
+            beat_ctrl=[(0.0, 6.0), (0.24, 6.0), (0.27, 5.5), (0.51, 5.5),
+                      (0.54, 5.0), (0.78, 5.0), (0.81, 4.5), (1.0, 4.5)],
+            beat_micro_amp=0.07, beat_micro_rate=0.009,
+            use_monaural=True, monaural_vol=0.035,
+            use_respiratory=True, breath_bpm=4.6, breath_bpm_end=4.2,
+            breath_depth=0.12,
+            infra_freq=0.045, infra_depth=0.100,
+            itd_period=160.0,
+            use_carrier_drift=True, carrier_drift_hz=0.45,
+            use_underbed=True, underbed_vol=0.016,
+            use_organic=True, organic_style='void', organic_intensity=0.42,
+            use_saturate=True, saturate_drive=0.045,
+            use_reverb=True, reverb_wet=0.055, reverb_rt60=850.0,
+            use_comfort_eq=True, block_gain=0.46,
+            quiet_before_s=20.0,
+            intro_fade_s=35.0, outro_fade_s=35.0,
+            skip_ambient_bridge=True,
+            seed=504
+        ),
+        # ── LIMINAL — past what Monroe-style ladders script: no voice, no
+        #    focus_mix, no further guidance. One small step at the midpoint;
+        #    otherwise hold. Largest micro-wander of the session on purpose —
+        #    it is the only thing still "alive" here.
+        Block(
+            label='DEEP DIVE — LIMINAL', dur_s=1500,
+            c0=200, c1=200, b0=4.5, b1=4.1,
+            carrier_type='soft', carrier_jitter=0.35, beat_jitter=0.03,
+            noise_pw=0.50, noise_bw=0.50,
+            beat_ctrl=[(0.0, 4.5), (0.46, 4.5), (0.50, 4.1), (1.0, 4.1)],
+            beat_micro_amp=0.10, beat_micro_rate=0.008,
+            use_monaural=True, monaural_vol=0.030,
+            use_respiratory=True, breath_bpm=4.2, breath_bpm_end=4.0,
+            breath_depth=0.11,
+            infra_freq=0.050, infra_depth=0.090,
+            itd_period=180.0,
+            use_carrier_drift=True, carrier_drift_hz=0.40,
+            use_underbed=True, underbed_vol=0.015,
+            use_organic=True, organic_style='void', organic_intensity=0.30,
+            use_saturate=True, saturate_drive=0.040,
+            use_reverb=True, reverb_wet=0.050, reverb_rt60=900.0,
+            use_comfort_eq=True, block_gain=0.42,
+            quiet_before_s=40.0,
+            intro_fade_s=40.0, outro_fade_s=35.0,
+            skip_ambient_bridge=True,
+            seed=505
+        ),
+        # ── AUTO / VOID — flat floor, then a genuine taper into silence.
+        #    outro_fade_s=240 (4 min, clamped to n//3=280s) is the real exit
+        #    ramp — a night session should end IN sleep, not stop abruptly.
+        Block(
+            label='DEEP DIVE — AUTO / VOID', dur_s=840,
+            c0=200, c1=200, b0=3.8, b1=3.8,
+            carrier_type='soft', carrier_jitter=0.3, beat_jitter=0.03,
+            noise_pw=0.50, noise_bw=0.50,
+            beat_ctrl=[(0.0, 3.8), (1.0, 3.8)],
+            beat_micro_amp=0.06, beat_micro_rate=0.007,
+            use_monaural=True, monaural_vol=0.025,
+            use_respiratory=True, breath_bpm=4.0, breath_depth=0.10,
+            infra_freq=0.050, infra_depth=0.080,
+            itd_period=200.0,
+            use_carrier_drift=True, carrier_drift_hz=0.35,
+            use_underbed=True, underbed_vol=0.013,
+            use_organic=True, organic_style='void', organic_intensity=0.18,
+            use_saturate=True, saturate_drive=0.035,
+            use_reverb=True, reverb_wet=0.045, reverb_rt60=950.0,
+            use_comfort_eq=True, block_gain=0.38,
+            quiet_before_s=35.0,
+            intro_fade_s=40.0, outro_fade_s=240.0,
+            skip_ambient_bridge=True,
+            seed=506
         ),
     ]

@@ -22,6 +22,7 @@
 *   **Honest science framing** in README (hypotheses, not clinical claims).
 *   **GATEWAY_EDGE (~31 min):** F10→F12→F15→soft interrupt→F21 touch→seal.
 *   **CHAKRA_ASCENT (~37 min):** solfeggio ladder + elevation + vowel formants (symbolic).
+*   **DEEP_DIVE_PRO_NIGHT (~121 min):** beat_ctrl/adaptive-drift descent PREP→BODY OFF→STABLE→DEEP→LIMINAL→AUTO-VOID, fixed carrier, void-style organic bed (events hard-zeroed), 4-min silence taper.
 *   **Anti-sizzle:** silk LP, softer comfort HF, min iso attacks, block intro fades.
 
 ## [PLANNED] Phase: NEUROSYNC (Biofeedback & Adaptation)

@@ -36,10 +36,14 @@ def _apply_carrier_type(phase: np.ndarray, ctype: str) -> np.ndarray:
 #  TUBE SATURATION
 # ══════════════════════════════════════════════════════════
 
-def tube_saturate(sig: np.ndarray, drive: float = 0.10) -> np.ndarray:
-    drive = float(np.clip(drive, 0.01, 0.40))
-    k     = float(np.tan(np.pi * drive / 2.0))
-    ak    = float(np.arctan(k))
+def tube_saturate(sig: np.ndarray, drive=0.10) -> np.ndarray:
+    """Arctan soft-clip. `drive` may be a scalar OR a same-length ndarray
+    (e.g. a _smooth_wander contour) for a slowly "breathing" warmth that
+    mimics a tube stage's thermal drift — still one vectorized arctan
+    pass, identical cost to the scalar case."""
+    d  = np.clip(np.asarray(drive, dtype=np.float64), 0.01, 0.40)
+    k  = np.tan(np.pi * d / 2.0)
+    ak = np.arctan(k)
     return (np.arctan(sig.astype(np.float64) * k) / ak).astype(np.float32)
 
 
@@ -149,22 +153,51 @@ def comfort_filter(L: np.ndarray, R: np.ndarray,
 #  SYNTHETIC ROOM REVERB
 # ══════════════════════════════════════════════════════════
 
-def room_reverb(L: np.ndarray, R: np.ndarray,
-                rt60_ms: float = 700.0,
-                wet: float     = 0.10) -> tuple:
-    ir_n = max(64, int(rt60_ms * 0.001 * SR))
-    t_ir = np.arange(ir_n, dtype=np.float64) / SR
+def _synth_room_ir(ir_n: int, t_ir: np.ndarray, rt60_ms: float,
+                   taps, jitter: float = 0.0, seed: int = 0) -> np.ndarray:
+    """Schroeder-style synthetic IR: exp decay + sparse early reflections.
+    jitter>0 perturbs tap delay/gain deterministically (per seed) — used to
+    generate a *second*, independently-seeded IR rather than time-reversing
+    the first (see room_reverb docstring)."""
     decay = np.exp(-6.91 * t_ir / (rt60_ms * 0.001)).astype(np.float32)
-    ir    = decay.copy()
-    for d_ms, g in [(8, 0.45), (17, 0.30), (31, 0.18)]:
+    ir = decay.copy()
+    rng = np.random.RandomState(int(seed) & 0xFFFFFFFF) if jitter > 0 else None
+    for d_ms, g in taps:
+        if rng is not None:
+            d_ms = d_ms * (1.0 + jitter * float(rng.uniform(-1.0, 1.0)))
+            g    = g    * (1.0 + jitter * float(rng.uniform(-1.0, 1.0)))
         d = int(d_ms * 0.001 * SR)
-        if d < ir_n:
+        if 0 <= d < ir_n:
             ir[d] += g
     ir /= (np.max(np.abs(ir)) + 1e-9)
+    return ir
+
+
+def room_reverb(L: np.ndarray, R: np.ndarray,
+                rt60_ms: float = 700.0,
+                wet: float     = 0.10,
+                seed: int      = 0) -> tuple:
+    """
+    Synthetic room IR (decay + 3 early reflections), convolved per channel.
+
+    L and R use two INDEPENDENTLY-seeded IRs (same rt60/tap recipe, small
+    jitter) instead of the old ir[::-1] trick for R. A time-reversed decay
+    curve is physically backwards — its energy *rises* across the IR and
+    relocates the strongest early reflection (was +8ms) to the tail — so
+    the previous R channel had an inverted, unnatural decay shape. Two
+    forward-decaying, independently-jittered IRs cost the same one extra
+    fftconvolve and are a genuinely closer analogue to how two ears
+    receive correlated-but-not-identical room reflections.
+    """
+    ir_n = max(64, int(rt60_ms * 0.001 * SR))
+    t_ir = np.arange(ir_n, dtype=np.float64) / SR
+    taps = [(8, 0.45), (17, 0.30), (31, 0.18)]
+    ir_L = _synth_room_ir(ir_n, t_ir, rt60_ms, taps, jitter=0.0, seed=seed)
+    ir_R = _synth_room_ir(ir_n, t_ir, rt60_ms, taps, jitter=0.12, seed=seed + 97)
     revL = fftconvolve(L.astype(np.float64),
-                       ir.astype(np.float64))[:len(L)].astype(np.float32)
+                       ir_L.astype(np.float64))[:len(L)].astype(np.float32)
     revR = fftconvolve(R.astype(np.float64),
-                       ir[::-1].astype(np.float64))[:len(R)].astype(np.float32)
+                       ir_R.astype(np.float64))[:len(R)].astype(np.float32)
     return (L + revL * wet).astype(np.float32), (R + revR * wet).astype(np.float32)
 
 
