@@ -50,14 +50,25 @@ def _fade_edges(sig: np.ndarray, fade_s: float = 0.35) -> np.ndarray:
 
 
 def _smooth_wander(n: int, seed: int, cutoff: float = 0.08) -> np.ndarray:
-    """Extremely slow unit-ish wander from pink noise."""
-    raw = pink_noise(n, seed).astype(np.float64)
-    # One-pole LP ≈ very slow envelope
-    a = float(np.exp(-2.0 * np.pi * cutoff / SR))
+    """Extremely slow unit-ish wander from pink noise.
+    Computed at a coarse control rate (this signal has no content anywhere
+    near audio rate) then linearly interpolated to n samples — same slow
+    character, a small fraction of the memory/CPU of a full-rate lfilter
+    pass, and the IIR pole sits at a sane a=exp(-2*pi*cutoff/ctrl_hz)
+    instead of ~0.9999997 at 44.1kHz (better-conditioned, not just cheaper)."""
+    ctrl_hz = 20.0
+    n_ctrl = max(48, int(np.ceil(n / SR * ctrl_hz)) + 4)
+    raw = pink_noise(n_ctrl, seed).astype(np.float64)
+    a = float(np.exp(-2.0 * np.pi * cutoff / ctrl_hz))
     w = lfilter([1.0 - a], [1.0, -a], raw)
     w -= w.mean()
     peak = np.max(np.abs(w)) + 1e-9
-    return (w / peak).astype(np.float64)
+    w = w / peak
+    if n <= 1:
+        return np.full(max(n, 0), w[0], dtype=np.float64)
+    x_ctrl = np.linspace(0.0, 1.0, n_ctrl)
+    x_full = np.linspace(0.0, 1.0, n)
+    return np.interp(x_full, x_ctrl, w).astype(np.float64)
 
 
 # ══════════════════════════════════════════════════════════

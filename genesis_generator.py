@@ -7,9 +7,17 @@ pip install numpy scipy soundfile
 
 import os, sys, re, time, threading
 
-OUT_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    # PyInstaller --onefile: __file__ resolves inside the temp _MEIPASS
+    # extraction dir, which is deleted on exit — writing FLAC/CUE there
+    # would silently vanish the moment the user closes the exe. Use the
+    # actual .exe's own directory instead; unfrozen behaviour is unchanged.
+    OUT_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 AUTHOR  = 'franklin-sys'
 URL     = 'https://franklin-sys.vercel.app/'
+VERSION = '1.0.0'
 
 # ── Windows: enable ANSI + arrow keys
 if sys.platform == 'win32':
@@ -296,7 +304,7 @@ def draw_menu(sel: int, show_detail: bool = False):
     draw_header()
 
     print(f'{GREY}  Выбери профиль сессии:{RESET}')
-    print(f'{DIM_W}  ↑ ↓  навигация    Enter  запуск    M  карта    Q  выход{RESET}')
+    print(f'{DIM_W}  ↑ ↓  навигация    Enter  запуск    M  карта    A  about    Q  выход{RESET}')
     print()
 
     for i, p in enumerate(PROFILES):
@@ -481,6 +489,31 @@ def show_map(profile: dict):
     _getch()
 
 
+def draw_about():
+    sys.stdout.write(CLEAR() + SHOW())
+    draw_header()
+    print(center(f'{GOLD}{BOLD()}ABOUT{RESET}'))
+    print()
+    print(hr())
+    print()
+    print(f'  {WHITE}NeuroDynamics{RESET} {DIM_W}v{VERSION}{RESET}')
+    print(f'  {GREY}Psychoacoustic session engine — binaural/monaural entrainment,{RESET}')
+    print(f'  {GREY}HRTF spatialization, adaptive-drift beat paths, offline{RESET}')
+    print(f'  {GREY}PCM-24 FLAC render.  {len(PROFILES)} встроенных профилей.{RESET}')
+    print()
+    print(f'  {GREY}Автор:{RESET}  {CYAN}{AUTHOR}{RESET}   {DIM_W}{URL}{RESET}')
+    print()
+    print(hr('·'))
+    print()
+    print(f'  {DIM_W}Для личного использования. Не медицинское устройство и не{RESET}')
+    print(f'  {DIM_W}клинический протокол — см. README,{RESET} {GOLD}«Научная рамка»{RESET}{DIM_W}.{RESET}')
+    print(f'  {DIM_W}Копирование/распространение — по согласованию с автором.{RESET}')
+    print()
+    print(f'  {DIM_W}Нажми любую клавишу...{RESET}')
+    sys.stdout.flush()
+    _getch()
+
+
 # ══════════════════════════════════════════
 #  MAIN LOOP
 # ══════════════════════════════════════════
@@ -514,6 +547,10 @@ def main():
 
         elif k in ('m', 'M'):
             show_map(PROFILES[sel])
+            show_detail = False
+
+        elif k in ('a', 'A'):
+            draw_about()
             show_detail = False
 
         elif k in (' ',):

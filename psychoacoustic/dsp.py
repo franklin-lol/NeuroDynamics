@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import lfilter, iirfilter, sosfilt, butter, fftconvolve
+from scipy.signal import lfilter, iirfilter, sosfilt, butter, fftconvolve, oaconvolve
 from .core import SR, log_sweep, jitter_envelope, build_carrier, pink_noise
 
 SCHUMANN = [7.83, 14.3, 20.8, 27.3, 33.8]
@@ -194,9 +194,9 @@ def room_reverb(L: np.ndarray, R: np.ndarray,
     taps = [(8, 0.45), (17, 0.30), (31, 0.18)]
     ir_L = _synth_room_ir(ir_n, t_ir, rt60_ms, taps, jitter=0.0, seed=seed)
     ir_R = _synth_room_ir(ir_n, t_ir, rt60_ms, taps, jitter=0.12, seed=seed + 97)
-    revL = fftconvolve(L.astype(np.float64),
+    revL = oaconvolve(L.astype(np.float64),
                        ir_L.astype(np.float64))[:len(L)].astype(np.float32)
-    revR = fftconvolve(R.astype(np.float64),
+    revR = oaconvolve(R.astype(np.float64),
                        ir_R.astype(np.float64))[:len(R)].astype(np.float32)
     return (L + revL * wet).astype(np.float32), (R + revR * wet).astype(np.float32)
 
