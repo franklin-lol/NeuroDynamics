@@ -152,7 +152,7 @@ def test_crossfade_silence_and_equal_power():
 
 @pytest.mark.parametrize("name", [
     "GENESIS", "WALK", "SLEEP", "HEALER", "ORACLE", "WARRIOR",
-    "GATEWAY_EDGE", "CHAKRA_ASCENT", "DEEP_DIVE_PRO_NIGHT",
+    "GATEWAY_EDGE", "CHAKRA_ASCENT", "DEEP_DIVE_PRO_NIGHT", "ACTIVE_FLUX",
 ])
 def test_profile_smoke(name):
     from dataclasses import replace

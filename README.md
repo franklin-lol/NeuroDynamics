@@ -46,6 +46,7 @@
 | **Gateway Edge** | GATEWAY_EDGE (~31 мин) | F10→F12→F15→soft interrupt→F21 touch→seal |
 | **Chakra** | CHAKRA_ASCENT (~37 мин) | 396→963 + elevation ladder + vowel formants (symbolic) |
 | **Deep Dive Pro** | DEEP_DIVE_PRO_NIGHT (~121 мин) | Один непрерывный ночной спуск PREP→BODY OFF→STABLE→DEEP→LIMINAL→AUTO/VOID, adaptive-drift beat, `void`-стиль (0 bowl/bell событий), 4-мин fade в тишину на выходе |
+| **Active Flux** | ACTIVE_FLUX (~23 мин) | Активирующий регистр: theta-gamma CFC на переднем плане, быстрые ACTIVATE/INTEGRATE-циклы, дыхание вверх, один контролируемый pattern-break. Не для сна. |
 
 ## Архитектура сессий
 

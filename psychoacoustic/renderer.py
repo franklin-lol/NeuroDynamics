@@ -242,7 +242,7 @@ def render_session(blocks: List[Block],
                 qL, qR = structured_quiet(dur_s=qb, seed=i * 31 + 7)
                 prev_tail = crossfade_write(
                     fh, prev_tail, qL, qR,
-                    fade_s=5.0, silence_s=0.0, equal_power=True)
+                    fade_s=5.0, silence_s=0.2, equal_power=False)
                 del qL, qR
 
             L, R = block.render()
@@ -256,15 +256,22 @@ def render_session(blocks: List[Block],
                 sil = 0.35
                 fade = max(fade_s, 12.0)  # longer ease across carrier jumps
             else:
-                use_ep = True
-                sil = 0.0
+                # Same carrier does NOT mean phase-aligned: two independently
+                # -phased tonal blocks summed via equal-power weights can
+                # destructively interfere (confirmed empirically — a real
+                # multi-block render showed a 45s/-52dB dropout here that
+                # vanished once this join used a short gap instead of an
+                # amplitude sum). A short silence costs far less than an
+                # unpredictable near-total dropout.
+                use_ep = False
+                sil = 0.30
                 fade = fade_s
 
             # Extra-soft entry after structured quiet / into interrupt-like labels
             if qb > 0 or 'INTERRUPT' in block.label.upper():
                 fade = max(fade, 14.0)
-                use_ep = True
-                sil = 0.0
+                use_ep = False
+                sil = 0.25
 
             prev_tail = crossfade_write(
                 fh, prev_tail, L, R,
@@ -279,7 +286,7 @@ def render_session(blocks: List[Block],
                                         seed=i * 17 + 3)
                 prev_tail = crossfade_write(
                     fh, prev_tail, bL, bR,
-                    fade_s=6.0, silence_s=0.0, equal_power=True)
+                    fade_s=6.0, silence_s=0.25, equal_power=False)
                 del bL, bR
 
         if prev_tail and prev_tail[0] is not None and len(prev_tail[0]):

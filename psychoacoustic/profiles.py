@@ -36,11 +36,13 @@ def build_profile(name: str):
     elif n in ('DEEP_DIVE_PRO_NIGHT', 'DEEP_DIVE_PRO', 'DEEP_DIVE',
                'DEEP_DIVE_NIGHT'):
         return _deep_dive_pro_night()
+    elif n in ('ACTIVE_FLUX', 'FLUX', 'ACTIVE'):
+        return _active_flux()
     else:
         raise ValueError(
             f"Unknown profile '{name}'. "
             f"Use: GENESIS WALK SLEEP HEALER ORACLE WARRIOR "
-            f"GATEWAY_EDGE CHAKRA_ASCENT DEEP_DIVE_PRO_NIGHT")
+            f"GATEWAY_EDGE CHAKRA_ASCENT DEEP_DIVE_PRO_NIGHT ACTIVE_FLUX")
 
 
 # ══════════════════════════════════════════════════════════
@@ -577,12 +579,14 @@ def _oracle():
               cfc_theta=7.83, cfc_strength=0.28,
               infra_freq=0.083, infra_depth=0.10,
               use_hrtf=True, itd_period=14.0,
-              use_wind=True, wind_vol=0.055,
+              use_wind=True, wind_vol=0.068,
               use_monaural=True, monaural_vol=0.04,
               use_formant=True, formant_intensity=0.18,
               use_saturate=True, saturate_drive=0.08,
               use_reverb=True, reverb_rt60=700.0, reverb_wet=0.09,
               use_respiratory=True, breath_bpm=6.0, breath_depth=0.12,
+              use_granular=True, granular_grain_ms=210.0, granular_density=2.4,
+              granular_pitch_st=0.25, granular_scatter=0.6, granular_vol=0.030,
               block_gain=0.72, use_comfort_eq=True,
               seed=81),
 
@@ -594,7 +598,7 @@ def _oracle():
               cfc_theta=6.5, cfc_strength=0.40,
               itd_period=16.0, use_hrtf=True,
               infra_freq=0.067, infra_depth=0.11,
-              use_drone=True, drone_vol=0.07,
+              use_drone=True, drone_vol=0.082,
               use_lfo_filter=True, lfo_fc=700.0, lfo_depth=320.0, lfo_rate=0.05,
               use_monaural=True, monaural_vol=0.04,
               use_formant=True, formant_intensity=0.18,
@@ -602,6 +606,8 @@ def _oracle():
               use_reverb=True, reverb_rt60=750.0, reverb_wet=0.09,
               use_respiratory=True, breath_bpm=6.0, breath_bpm_end=5.0,
               breath_depth=0.12,
+              use_granular=True, granular_grain_ms=195.0, granular_density=2.2,
+              granular_pitch_st=0.22, granular_scatter=0.6, granular_vol=0.028,
               block_gain=0.72, use_comfort_eq=True,
               seed=82),
 
@@ -615,13 +621,15 @@ def _oracle():
               infra_freq=0.05, infra_depth=0.11,
               use_chaos=True, chaos_depth=0.16,
               phase_lock=True, phase_lock_depth=0.14,
-              use_drone=True, drone_vol=0.07,
+              use_drone=True, drone_vol=0.082,
               use_monaural=True, monaural_vol=0.04,
               use_formant=True, formant_intensity=0.18,
               use_saturate=True, saturate_drive=0.08,
               use_reverb=True, reverb_rt60=800.0, reverb_wet=0.09,
               use_respiratory=True, breath_bpm=5.5, breath_bpm_end=4.5,
               breath_depth=0.13,
+              use_granular=True, granular_grain_ms=185.0, granular_density=2.0,
+              granular_pitch_st=0.2, granular_scatter=0.65, granular_vol=0.026,
               block_gain=0.70, use_comfort_eq=True,
               seed=83),
 
@@ -634,7 +642,7 @@ def _oracle():
               spatial_3d=True, itd_period=14.0, el_period=23.0, el_depth=0.35,
               infra_freq=0.05, infra_depth=0.12,
               use_phi=True, use_hrtf=True, hrtf_az_sweep=14.0,
-              use_wind=True, wind_vol=0.055,
+              use_wind=True, wind_vol=0.068,
               use_formant=True, formant_intensity=0.18,
               use_reverb=True, reverb_rt60=1000.0, reverb_wet=0.10,
               use_respiratory=True, breath_bpm=5.0, breath_bpm_end=4.0,
@@ -652,12 +660,14 @@ def _oracle():
               cfc_theta=7.83, cfc_strength=0.32,
               itd_period=12.0, use_hrtf=True, hrtf_az_sweep=12.0,
               infra_freq=0.083, infra_depth=0.10,
-              use_wind=True, wind_vol=0.05,
+              use_wind=True, wind_vol=0.062,
               use_monaural=True, monaural_vol=0.04,
               use_formant=True, formant_intensity=0.16,
               use_saturate=True, saturate_drive=0.08,
               use_reverb=True, reverb_rt60=700.0, reverb_wet=0.09,
               use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
+              use_granular=True, granular_grain_ms=200.0, granular_density=2.2,
+              granular_pitch_st=0.22, granular_scatter=0.6, granular_vol=0.028,
               block_gain=0.72, use_comfort_eq=True,
               seed=85),
 
@@ -667,7 +677,7 @@ def _oracle():
               iso_layers=[(40.0, 200, 0.08, 6, 5),
                           (14.0, 216, 0.06, 10, 5)],
               assr_80hz_vol=0.035,
-              use_drone=True, drone_vol=0.07,
+              use_drone=True, drone_vol=0.082,
               use_monaural=True, monaural_vol=0.04,
               use_formant=True, formant_intensity=0.16,
               use_saturate=True, saturate_drive=0.08,
@@ -1199,5 +1209,212 @@ def _deep_dive_pro_night():
             intro_fade_s=40.0, outro_fade_s=240.0,
             skip_ambient_bridge=True,
             seed=506
+        ),
+    ]
+
+
+# ══════════════════════════════════════════════════════════
+#  ACTIVE FLUX — ~23 min
+#
+#  PRIME → (ACTIVATE → INTEGRATE) × 3 → CLOSE
+#
+#  Opposite register from DEEP DIVE: this profile does not try to be
+#  still. It is built around three mechanisms that ARE reasonably
+#  documented (see README honest-framing table for caveats on each):
+#    · theta-gamma cross-frequency coupling (apply_cfc) moved to the
+#      FOREGROUND — gamma iso_layers at real presence (0.11), not a
+#      background dusting like ORACLE/GATEWAY_EDGE use it.
+#    · fast phase-cycling — three short ACTIVATE bursts separated by
+#      brief INTEGRATE dips, instead of one long monotonic vector.
+#      Loosely ultradian-inspired; nothing here is a real closed loop
+#      (that needs EEG — see ROADMAP NEUROSYNC), it is a fixed, coarse,
+#      hardware-free analogue of "activity / integration" alternation.
+#    · respiratory entrainment run in REVERSE — breath_bpm climbs
+#      (6→8.5) instead of the descent every other profile in this file
+#      uses, matching an alerting rather than calming target.
+#  ACTIVATE 2 additionally runs a fast itd_period (4s vs the other two
+#  ACTIVATEs' 10s) — a deliberate, single, non-loud pattern break
+#  (predictive-coding-style: break the just-established regularity once,
+#  not randomly) rather than a literal "harder" stimulus.
+#
+#  Honest framing: this is an engineering hypothesis assembled from
+#  documented-but-preliminary mechanisms, not a validated cognitive
+#  enhancer. No claim here is stronger than the caveats already in
+#  README (40Hz/gamma entrainment evidence in healthy adults is thin;
+#  treat this the same way).
+# ══════════════════════════════════════════════════════════
+
+def _active_flux():
+    return [
+        # ── PRIME — alpha climbing into low beta, nothing gamma yet
+        Block(
+            label='FLUX — PRIME', dur_s=150,
+            c0=200, c1=200, b0=10.0, b1=13.0,
+            carrier_type='warm', carrier_jitter=0.9, beat_jitter=0.06,
+            noise_pw=0.75, noise_bw=0.25,
+            use_monaural=True, monaural_vol=0.035,
+            use_respiratory=True, breath_bpm=6.0, breath_bpm_end=7.0,
+            breath_depth=0.11,
+            infra_freq=0.06, infra_depth=0.09,
+            itd_period=11.0,
+            use_carrier_drift=True, carrier_drift_hz=0.7,
+            use_granular=True, granular_grain_ms=160.0, granular_density=3.0,
+            granular_pitch_st=0.3, granular_scatter=0.55, granular_vol=0.035,
+            use_saturate=True, saturate_drive=0.06,
+            use_reverb=True, reverb_wet=0.06, reverb_rt60=650.0,
+            use_comfort_eq=True, block_gain=0.55,
+            intro_fade_s=15.0, outro_fade_s=12.0,
+            skip_ambient_bridge=True,
+            seed=701
+        ),
+        # ── ACTIVATE 1 — gamma-theta CFC in the foreground
+        Block(
+            label='FLUX — ACTIVATE 1', dur_s=270,
+            c0=200, c1=200, b0=13.0, b1=16.0,
+            carrier_type='warm', carrier_jitter=0.8, beat_jitter=0.07,
+            noise_pw=0.65, noise_bw=0.35,
+            iso_layers=[(40.0, 200, 0.11, 8, 8)],
+            cfc_theta=6.0, cfc_strength=0.55, assr_80hz_vol=0.04,
+            use_monaural=True, monaural_vol=0.045,
+            use_respiratory=True, breath_bpm=7.0, breath_bpm_end=8.0,
+            breath_depth=0.12,
+            infra_freq=0.07, infra_depth=0.10,
+            itd_period=10.0,
+            use_carrier_drift=True, carrier_drift_hz=0.8,
+            use_granular=True, granular_grain_ms=140.0, granular_density=4.5,
+            granular_pitch_st=0.35, granular_scatter=0.5, granular_vol=0.04,
+            use_saturate=True, saturate_drive=0.07,
+            use_reverb=True, reverb_wet=0.07, reverb_rt60=600.0,
+            use_comfort_eq=True, block_gain=0.62,
+            intro_fade_s=12.0, outro_fade_s=10.0,
+            skip_ambient_bridge=True,
+            seed=702
+        ),
+        # ── INTEGRATE 1 — brief theta dip, quiet, no gamma
+        Block(
+            label='FLUX — INTEGRATE 1', dur_s=70,
+            c0=200, c1=200, b0=16.0, b1=7.0,
+            carrier_type='soft', carrier_jitter=0.5, beat_jitter=0.05,
+            noise_pw=0.7, noise_bw=0.3,
+            use_monaural=True, monaural_vol=0.03,
+            use_respiratory=True, breath_bpm=8.0, breath_bpm_end=7.0,
+            breath_depth=0.10,
+            infra_freq=0.05, infra_depth=0.08,
+            itd_period=13.0,
+            use_saturate=True, saturate_drive=0.05,
+            use_reverb=True, reverb_wet=0.06, reverb_rt60=700.0,
+            use_comfort_eq=True, block_gain=0.46,
+            quiet_before_s=8.0,
+            intro_fade_s=10.0, outro_fade_s=10.0,
+            skip_ambient_bridge=True,
+            seed=703
+        ),
+        # ── ACTIVATE 2 — same as ACTIVATE 1, EXCEPT fast itd_period (4s vs
+        #    10s): the one deliberate pattern-break in the session
+        Block(
+            label='FLUX — ACTIVATE 2', dur_s=270,
+            c0=200, c1=200, b0=16.0, b1=17.0,
+            carrier_type='warm', carrier_jitter=0.8, beat_jitter=0.07,
+            noise_pw=0.65, noise_bw=0.35,
+            iso_layers=[(40.0, 200, 0.11, 8, 8)],
+            cfc_theta=6.0, cfc_strength=0.58, assr_80hz_vol=0.04,
+            use_monaural=True, monaural_vol=0.045,
+            use_respiratory=True, breath_bpm=8.0, breath_bpm_end=8.3,
+            breath_depth=0.12,
+            infra_freq=0.07, infra_depth=0.10,
+            itd_period=4.0,
+            use_carrier_drift=True, carrier_drift_hz=0.8,
+            use_granular=True, granular_grain_ms=140.0, granular_density=4.5,
+            granular_pitch_st=0.35, granular_scatter=0.5, granular_vol=0.04,
+            use_saturate=True, saturate_drive=0.07,
+            use_reverb=True, reverb_wet=0.07, reverb_rt60=600.0,
+            use_comfort_eq=True, block_gain=0.62,
+            intro_fade_s=10.0, outro_fade_s=10.0,
+            skip_ambient_bridge=True,
+            seed=704
+        ),
+        # ── INTEGRATE 2
+        Block(
+            label='FLUX — INTEGRATE 2', dur_s=70,
+            c0=200, c1=200, b0=17.0, b1=7.0,
+            carrier_type='soft', carrier_jitter=0.5, beat_jitter=0.05,
+            noise_pw=0.7, noise_bw=0.3,
+            use_monaural=True, monaural_vol=0.03,
+            use_respiratory=True, breath_bpm=8.3, breath_bpm_end=7.0,
+            breath_depth=0.10,
+            infra_freq=0.05, infra_depth=0.08,
+            itd_period=13.0,
+            use_saturate=True, saturate_drive=0.05,
+            use_reverb=True, reverb_wet=0.06, reverb_rt60=700.0,
+            use_comfort_eq=True, block_gain=0.46,
+            quiet_before_s=8.0,
+            intro_fade_s=10.0, outro_fade_s=10.0,
+            skip_ambient_bridge=True,
+            seed=705
+        ),
+        # ── ACTIVATE 3 — peak of the session, itd_period back to normal
+        #    (frames ACTIVATE 2 as the one that broke pattern, not this one)
+        Block(
+            label='FLUX — ACTIVATE 3', dur_s=270,
+            c0=200, c1=200, b0=17.0, b1=18.0,
+            carrier_type='warm', carrier_jitter=0.8, beat_jitter=0.07,
+            noise_pw=0.65, noise_bw=0.35,
+            iso_layers=[(40.0, 200, 0.11, 8, 8)],
+            cfc_theta=6.0, cfc_strength=0.55, assr_80hz_vol=0.04,
+            use_monaural=True, monaural_vol=0.045,
+            use_respiratory=True, breath_bpm=8.3, breath_bpm_end=8.5,
+            breath_depth=0.12,
+            infra_freq=0.07, infra_depth=0.10,
+            itd_period=10.0,
+            use_carrier_drift=True, carrier_drift_hz=0.8,
+            use_granular=True, granular_grain_ms=140.0, granular_density=4.5,
+            granular_pitch_st=0.35, granular_scatter=0.5, granular_vol=0.04,
+            use_saturate=True, saturate_drive=0.07,
+            use_reverb=True, reverb_wet=0.07, reverb_rt60=600.0,
+            use_comfort_eq=True, block_gain=0.62,
+            intro_fade_s=10.0, outro_fade_s=12.0,
+            skip_ambient_bridge=True,
+            seed=706
+        ),
+        # ── INTEGRATE 3 — longer, settling before CLOSE
+        Block(
+            label='FLUX — INTEGRATE 3', dur_s=90,
+            c0=200, c1=200, b0=18.0, b1=7.0,
+            carrier_type='soft', carrier_jitter=0.4, beat_jitter=0.04,
+            noise_pw=0.7, noise_bw=0.3,
+            use_monaural=True, monaural_vol=0.03,
+            use_respiratory=True, breath_bpm=8.5, breath_bpm_end=6.8,
+            breath_depth=0.10,
+            infra_freq=0.05, infra_depth=0.08,
+            itd_period=14.0,
+            use_saturate=True, saturate_drive=0.05,
+            use_reverb=True, reverb_wet=0.06, reverb_rt60=750.0,
+            use_comfort_eq=True, block_gain=0.44,
+            quiet_before_s=10.0,
+            intro_fade_s=12.0, outro_fade_s=12.0,
+            skip_ambient_bridge=True,
+            seed=707
+        ),
+        # ── CLOSE — settle to calm-alert baseline (alpha), NOT sleep range;
+        #    this profile is meant to leave you awake and functional after
+        Block(
+            label='FLUX — CLOSE', dur_s=200,
+            c0=200, c1=200, b0=7.0, b1=10.0,
+            carrier_type='soft', carrier_jitter=0.5, beat_jitter=0.04,
+            noise_pw=0.8, noise_bw=0.2,
+            use_monaural=True, monaural_vol=0.03,
+            use_respiratory=True, breath_bpm=6.8, breath_bpm_end=6.0,
+            breath_depth=0.10,
+            infra_freq=0.04, infra_depth=0.07,
+            itd_period=15.0,
+            use_carrier_drift=True, carrier_drift_hz=0.5,
+            use_granular=True, granular_grain_ms=180.0, granular_density=2.2,
+            granular_pitch_st=0.2, granular_scatter=0.6, granular_vol=0.03,
+            use_saturate=True, saturate_drive=0.05,
+            use_reverb=True, reverb_wet=0.06, reverb_rt60=750.0,
+            use_comfort_eq=True, block_gain=0.48,
+            intro_fade_s=15.0, outro_fade_s=25.0,
+            skip_ambient_bridge=True,
+            seed=708
         ),
     ]
