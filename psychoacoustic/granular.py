@@ -135,9 +135,8 @@ def granular_cloud(
     for i in range(n_grains):
         pos = int(onset_samples[i])
 
-        # Skip grains that start before the buffer
         if pos < 0:
-            continue
+            pos = pos % n_out
 
         end = pos + grain_n
 

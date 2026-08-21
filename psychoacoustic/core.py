@@ -31,12 +31,17 @@ def morph_noise(n, pw, bw, seed=0):
 
 
 def calibrated_noise(sig_L, sig_R, pw, bw, seed=0):
-    """Noise amplitude set to SR-optimal 15% of signal RMS."""
-    n       = len(sig_L)
-    sig_rms = np.sqrt(np.mean(sig_L**2 + sig_R**2) / 2) + 1e-9
-    nz      = morph_noise(n, pw, bw, seed)
-    nz_rms  = np.sqrt(np.mean(nz**2)) + 1e-9
-    return (nz * (sig_rms * _SR_NOISE_RATIO / nz_rms)).astype(np.float32)
+    """Noise amplitude set to SR-optimal 15% of signal RMS. Returns (nz_L, nz_R)."""
+    n = len(sig_L)
+    sig_rms_L = np.sqrt(np.mean(sig_L**2)) + 1e-9
+    sig_rms_R = np.sqrt(np.mean(sig_R**2)) + 1e-9
+    nz_L = morph_noise(n, pw, bw, seed)
+    nz_R = morph_noise(n, pw, bw, seed + 999)
+    nz_rms_L = np.sqrt(np.mean(nz_L**2)) + 1e-9
+    nz_rms_R = np.sqrt(np.mean(nz_R**2)) + 1e-9
+    nz_L = (nz_L * (sig_rms_L * _SR_NOISE_RATIO / nz_rms_L)).astype(np.float32)
+    nz_R = (nz_R * (sig_rms_R * _SR_NOISE_RATIO / nz_rms_R)).astype(np.float32)
+    return nz_L, nz_R
 
 
 # ══════════════════════════════════════════════════════════

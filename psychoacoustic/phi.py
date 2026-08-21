@@ -23,10 +23,10 @@ def phi_beat_layer(dur_s, base_carrier, beat_array, vol=0.18, seed=0):
     Import here to avoid circular dependency.
     """
     from .dsp import dual_binaural
-    from .core import log_sweep
+    from .core import log_sweep, SR
     import numpy as np
 
-    n = int(dur_s * 44100)
+    n = int(dur_s * SR)
     c_phi = base_carrier * PHI
     b_phi = np.clip(beat_array * PHI, 0.3, 120.0).astype(np.float64)
 

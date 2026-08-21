@@ -123,6 +123,34 @@ class Block:
     # ── Structured quiet before this block (renderer inserts)
     quiet_before_s:      float = 0.0
     seed:             int   = 0
+    # ── Harmonic binaural (redundant entrainment across spectral channels)
+    use_harmonic_binaural:  bool  = False
+    harmonic_partials:      int   = 4
+    harmonic_carrier_types: Optional[list] = None
+    harmonic_vol:           float = 0.25
+    # ── Polyrhythmic isochronic (multiple layers at frequency ratios)
+    use_polyrhythmic_iso:   bool  = False
+    polyrhythmic_ratios:    Optional[list] = None
+    polyrhythmic_base_freq: float = 6.0
+    polyrhythmic_carriers:  Optional[list] = None
+    polyrhythmic_vols:      Optional[list] = None
+    # ── CFC envelope type (sine or asymmetric PAC)
+    cfc_envelope_type:      str   = 'sine'
+    cfc_asymmetry:          float = 0.5
+    # ── SR noise on entrainment signal
+    use_signal_sr:          bool  = False
+    signal_sr_ratio:        float = 0.282
+    # ── FM carrier (modulator at brainwave frequency)
+    use_fm_carrier:         bool  = False
+    fm_mod_freq:            float = 0.0
+    fm_mod_index:           float = 1.0
+    # ── Shepard carrier (infinite pitch illusion)
+    use_shepard_carrier:    bool  = False
+    shepard_sweep_rate:     float = 0.05
+    shepard_num_octaves:    int   = 5
+    shepard_sigma:          float = 1.0
+    # ── Golden ratio breathing (fractal secondary LFO)
+    breath_golden_ratio:    bool  = False
 
     def __post_init__(self):
         if self.c1 is None: self.c1 = self.c0
@@ -138,7 +166,9 @@ class Block:
                             tube_saturate, formant_resonator, room_reverb,
                             monaural_beat_layer, respiratory_entrainment_mod,
                             comfort_filter, soft_ceiling, budget_am_depths,
-                            underbed_noise, focus_mix_layer, silk_lowpass)
+                            underbed_noise, focus_mix_layer, silk_lowpass,
+                            harmonic_binaural, polyrhythmic_isochronic,
+                            fm_carrier, shepard_carrier, apply_sr_noise)
         from .chaos import chaos_modulate
         from .hrtf  import hrtf_externalize
         from .phi   import phi_beat_layer
@@ -189,6 +219,42 @@ class Block:
             L, R = dual_binaural(self.dur_s, self.c0, self.c1,
                                  self.b0, self.b1,
                                  vol_p=0.60, vol_s=0.22, **kw)
+
+        # ── Harmonic binaural (redundant entrainment)
+        if self.use_harmonic_binaural:
+            beat_center = float(np.mean(B_raw))
+            L_h, R_h = harmonic_binaural(
+                self.dur_s, self.c0,
+                beat_freq=beat_center,
+                num_partials=self.harmonic_partials,
+                vol=self.harmonic_vol,
+                carrier_types=self.harmonic_carrier_types,
+                seed=self.seed + 3000)
+            L += L_h; R += R_h
+
+        # ── FM carrier (modulator at brainwave freq)
+        if self.use_fm_carrier:
+            beat_center = float(np.mean(B_raw))
+            L_fm, R_fm = fm_carrier(
+                self.dur_s, self.c0,
+                mod_freq=self.fm_mod_freq,
+                mod_index=self.fm_mod_index,
+                beat_freq=beat_center,
+                vol=0.15)
+            L += L_fm; R += R_fm
+
+        # ── Shepard carrier (infinite pitch illusion)
+        if self.use_shepard_carrier:
+            beat_center = float(np.mean(B_raw))
+            L_sh, R_sh = shepard_carrier(
+                self.dur_s,
+                center_freq=self.c0,
+                sweep_rate=self.shepard_sweep_rate,
+                beat_freq=beat_center,
+                num_octaves=self.shepard_num_octaves,
+                sigma=self.shepard_sigma,
+                vol=0.12)
+            L += L_sh; R += R_sh
 
         # ── Focus mix (body delta + cortex alpha/beta)
         if self.use_focus_mix:
@@ -265,7 +331,7 @@ class Block:
         # ── ISO layers + CFC (soft min attack unless allow_sharp_iso)
         for (fv, cv, vv, atk, dec) in self.iso_layers:
             if not self.allow_sharp_iso:
-                floor = min(12.0, max(6.0, self.dur_s * 0.20))
+                floor = min(6.0, max(3.0, self.dur_s * 0.10))
                 atk = max(float(atk), floor)
                 dec = max(float(dec), floor * 0.75)
             # High iso carriers whistle easily — cap carrier for gamma beds
@@ -276,15 +342,29 @@ class Block:
                              carrier_type=self.carrier_type)
             if self.cfc_theta > 0 and fv >= 30.0:
                 sig = apply_cfc(sig, self.dur_s,
-                                self.cfc_theta, self.cfc_strength)
+                                self.cfc_theta, self.cfc_strength,
+                                envelope_type=self.cfc_envelope_type,
+                                asymmetry=self.cfc_asymmetry)
             L += sig; R += sig
+
+        # ── Polyrhythmic isochronic layers
+        if self.use_polyrhythmic_iso:
+            poly_sig = polyrhythmic_isochronic(
+                self.dur_s,
+                ratios=self.polyrhythmic_ratios,
+                base_freq=self.polyrhythmic_base_freq,
+                carriers=self.polyrhythmic_carriers,
+                vols=self.polyrhythmic_vols)
+            L += poly_sig; R += poly_sig
 
         # ── ASSR-80
         if self.assr_80hz_vol > 0:
             a80 = assr_80hz(self.dur_s, carrier=200.0, vol=self.assr_80hz_vol)
             if self.cfc_theta > 0:
                 a80 = apply_cfc(a80, self.dur_s,
-                                self.cfc_theta, self.cfc_strength * 0.5)
+                                self.cfc_theta, self.cfc_strength * 0.5,
+                                envelope_type=self.cfc_envelope_type,
+                                asymmetry=self.cfc_asymmetry)
             L += a80; R += a80
 
         # ── Continuous underbed
@@ -367,10 +447,16 @@ class Block:
             L = silk_lowpass(L, cut)
             R = silk_lowpass(R, cut)
 
-        # ── Calibrated SR-noise
-        nz = calibrated_noise(L, R, self.noise_pw, self.noise_bw,
-                              self.seed + 300)
-        L += nz; R += nz
+        # ── Calibrated SR-noise (per-channel independent)
+        nz_L, nz_R = calibrated_noise(L, R, self.noise_pw, self.noise_bw,
+                                      self.seed + 300)
+        L += nz_L; R += nz_R
+
+        # ── SR noise on entrainment signal (per-block)
+        if self.use_signal_sr:
+            L, R = apply_sr_noise(L, R,
+                                  sr_ratio=self.signal_sr_ratio,
+                                  seed=self.seed + 3500)
 
         # ── Spatial chain
         if self.spatial_3d and self.itd_period > 0:
@@ -395,7 +481,8 @@ class Block:
         if self.use_respiratory and breath_d > 0:
             mod  = respiratory_entrainment_mod(
                 self.dur_s, self.breath_bpm, breath_d,
-                breath_bpm_end=self.breath_bpm_end)
+                breath_bpm_end=self.breath_bpm_end,
+                use_golden_ratio=self.breath_golden_ratio)
             L = (L * mod).astype(np.float32)
             R = (R * mod).astype(np.float32)
 
@@ -427,12 +514,7 @@ class Block:
                 L[-fn:] *= ramp
                 R[-fn:] *= ramp
 
-        # ── Master chain: pre-norm → comfort EQ → soft ceiling → block_gain
-        peak = max(np.max(np.abs(L)), np.max(np.abs(R))) + 1e-9
-        if peak > 0.56:
-            L = (L / peak * 0.56).astype(np.float32)
-            R = (R / peak * 0.56).astype(np.float32)
-
+        # ── Master chain: comfort EQ → soft ceiling → block_gain
         if self.use_comfort_eq:
             # Stronger silk on high carriers
             cmax = max(float(self.c0), float(self.c1))

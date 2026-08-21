@@ -64,6 +64,7 @@ def _genesis():
             use_monaural=True, monaural_vol=0.04,
             use_saturate=True, saturate_drive=0.08,
             use_comfort_eq=True, block_gain=0.78,
+            use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.18,
             seed=1
         ),
         Block(
@@ -86,6 +87,7 @@ def _genesis():
             use_saturate=True, saturate_drive=0.08,
             use_respiratory=True, breath_bpm=6.0, breath_depth=0.12,
             use_comfort_eq=True, block_gain=0.75,
+            use_signal_sr=True, signal_sr_ratio=0.25,
             seed=2
         ),
         Block(
@@ -97,6 +99,7 @@ def _genesis():
             iso_layers=[(6.0,  264, 0.09, 14, 12),
                         (40.0, 200, 0.055, 16,  8)],
             cfc_theta=6.0, cfc_strength=0.40,
+            cfc_envelope_type='asymmetric', cfc_asymmetry=0.7,
             assr_80hz_vol=0.03,
             itd_period=15.0, use_hrtf=True, hrtf_az_sweep=0,
             infra_freq=0.08, infra_depth=0.11,
@@ -130,6 +133,7 @@ def _genesis():
             breath_depth=0.13,
             use_comfort_eq=True, block_gain=0.68,
             use_focus_mix=True, focus_body_beat=2.0, focus_cortex_beat=10.0,
+            use_signal_sr=True, signal_sr_ratio=0.22,
             seed=4
         ),
         Block(
@@ -235,6 +239,8 @@ def _walk():
             use_saturate=True, saturate_drive=0.08,
             use_reverb=True, reverb_rt60=500.0, reverb_wet=0.08,
             use_comfort_eq=True, block_gain=0.78,
+            use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
+            breath_golden_ratio=True,
             seed=41
         ),
         Block(
@@ -255,6 +261,7 @@ def _walk():
             use_reverb=True, reverb_rt60=550.0, reverb_wet=0.09,
             use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
             use_comfort_eq=True, block_gain=0.76,
+            use_polyrhythmic_iso=True, polyrhythmic_ratios=[3, 2], polyrhythmic_base_freq=6.0,
             seed=42
         ),
         Block(
@@ -277,6 +284,7 @@ def _walk():
             use_reverb=True, reverb_rt60=600.0, reverb_wet=0.09,
             use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
             use_comfort_eq=True, block_gain=0.76,
+            use_polyrhythmic_iso=True, polyrhythmic_ratios=[3, 2], polyrhythmic_base_freq=6.0,
             seed=43
         ),
         Block(
@@ -293,6 +301,8 @@ def _walk():
             use_saturate=True, saturate_drive=0.08,
             use_reverb=True, reverb_rt60=500.0, reverb_wet=0.08,
             use_comfort_eq=True, block_gain=0.78,
+            use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
+            breath_golden_ratio=True,
             seed=44
         ),
     ]
@@ -336,6 +346,7 @@ def _sleep():
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.14,
               use_focus_mix=True, focus_body_beat=2.0, focus_cortex_beat=9.0,
               use_monaural=True, monaural_vol=0.025,
+              use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.12,
               block_gain=0.52, use_comfort_eq=True,
               seed=53),
 
@@ -344,6 +355,7 @@ def _sleep():
               carrier_type='warm', noise_pw=0.2, noise_bw=0.8,
               iso_layers=[(40.0, 200, 0.065, 6, 8)],
               cfc_theta=6.0, cfc_strength=0.35, assr_80hz_vol=0.03,
+              cfc_envelope_type='asymmetric', cfc_asymmetry=0.7,
               spatial_3d=True, itd_period=8.0, el_period=13.0, el_depth=0.35,
               use_hrtf=True, hrtf_az_sweep=8.0, hrtf_elevation=10.0,
               use_chaos=True, chaos_depth=0.14,
@@ -384,6 +396,7 @@ def _sleep():
               granular_scatter=0.65, granular_vol=0.045,
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.14,
               use_focus_mix=True, focus_body_beat=1.5, focus_cortex_beat=8.0,
+              use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.12,
               block_gain=0.52, use_comfort_eq=True,
               seed=57),
 
@@ -393,6 +406,7 @@ def _sleep():
               iso_layers=[(40.0, 200, 0.07, 6, 8),
                           (33.0, 180, 0.045, 8, 8)],
               cfc_theta=6.0, cfc_strength=0.38, assr_80hz_vol=0.03,
+              cfc_envelope_type='asymmetric', cfc_asymmetry=0.7,
               spatial_3d=True, itd_period=7.0, el_period=11.0, el_depth=0.40,
               use_hrtf=True, hrtf_az_sweep=7.0, hrtf_elevation=15.0,
               use_chaos=True, chaos_depth=0.15,
@@ -427,6 +441,7 @@ def _sleep():
               iso_layers=[(40.0, 200, 0.075, 6, 6),
                           (33.0, 180, 0.05, 6, 6)],
               cfc_theta=6.5, cfc_strength=0.42, assr_80hz_vol=0.035,
+              cfc_envelope_type='asymmetric', cfc_asymmetry=0.7,
               spatial_3d=True, itd_period=6.0, el_period=11.0, el_depth=0.45,
               use_hrtf=True, hrtf_az_sweep=6.0, hrtf_elevation=20.0,
               use_chaos=True, chaos_depth=0.16,
@@ -479,6 +494,7 @@ def _healer():
               use_saturate=True, saturate_drive=0.08,
               use_reverb=True, reverb_rt60=650.0, reverb_wet=0.09,
               use_respiratory=True, breath_bpm=6.0, breath_depth=0.12,
+              breath_golden_ratio=True,
               block_gain=0.58, use_comfort_eq=True,
               seed=71),
 
@@ -497,7 +513,7 @@ def _healer():
               use_saturate=True, saturate_drive=0.08,
               use_reverb=True, reverb_rt60=700.0, reverb_wet=0.09,
               use_respiratory=True, breath_bpm=5.5, breath_bpm_end=4.0,
-              breath_depth=0.13,
+              breath_depth=0.13, breath_golden_ratio=True,
               block_gain=0.56, use_comfort_eq=True,
               seed=72),
 
@@ -514,8 +530,10 @@ def _healer():
               granular_scatter=0.55, granular_vol=0.065,
               use_formant=True, formant_intensity=0.16,
               use_respiratory=True, breath_bpm=4.5, breath_bpm_end=4.0,
-              breath_depth=0.14,
+              breath_depth=0.14, breath_golden_ratio=True,
               use_focus_mix=True, focus_body_beat=1.5, focus_cortex_beat=8.0,
+              use_shepard_carrier=True, shepard_sweep_rate=0.03, shepard_sigma=0.8,
+              use_signal_sr=True, signal_sr_ratio=0.25,
               block_gain=0.52, use_comfort_eq=True,
               quiet_before_s=60.0,
               seed=73),
@@ -532,7 +550,9 @@ def _healer():
               granular_scatter=0.60, granular_vol=0.055,
               use_formant=True, formant_intensity=0.16,
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.14,
+              breath_golden_ratio=True,
               use_focus_mix=True, focus_body_beat=1.5, focus_cortex_beat=7.5,
+              use_shepard_carrier=True, shepard_sweep_rate=0.03, shepard_sigma=0.8,
               block_gain=0.52, use_comfort_eq=True,
               quiet_before_s=45.0,
               seed=74),
@@ -549,6 +569,7 @@ def _healer():
               use_saturate=True, saturate_drive=0.08,
               use_reverb=True, reverb_rt60=650.0, reverb_wet=0.09,
               use_respiratory=True, breath_bpm=5.0, breath_depth=0.12,
+              breath_golden_ratio=True,
               block_gain=0.60, use_comfort_eq=True,
               seed=75),
 
@@ -596,6 +617,7 @@ def _oracle():
               iso_layers=[(6.0,  216, 0.08, 14, 12),
                           (40.0, 200, 0.05, 16, 10)],
               cfc_theta=6.5, cfc_strength=0.40,
+              cfc_envelope_type='asymmetric', cfc_asymmetry=0.65,
               itd_period=16.0, use_hrtf=True,
               infra_freq=0.067, infra_depth=0.11,
               use_drone=True, drone_vol=0.082,
@@ -617,6 +639,7 @@ def _oracle():
               iso_layers=[(5.5,  216, 0.075, 12, 12),
                           (40.0, 200, 0.055, 14, 10)],
               cfc_theta=5.5, cfc_strength=0.45, assr_80hz_vol=0.03,
+              cfc_envelope_type='asymmetric', cfc_asymmetry=0.65,
               itd_period=18.0, use_hrtf=True,
               infra_freq=0.05, infra_depth=0.11,
               use_chaos=True, chaos_depth=0.16,
@@ -643,6 +666,8 @@ def _oracle():
               infra_freq=0.05, infra_depth=0.12,
               use_phi=True, use_hrtf=True, hrtf_az_sweep=14.0,
               use_wind=True, wind_vol=0.068,
+              use_harmonic_binaural=True, harmonic_partials=4, harmonic_vol=0.15,
+              use_fm_carrier=True, fm_mod_index=0.8,
               use_formant=True, formant_intensity=0.18,
               use_reverb=True, reverb_rt60=1000.0, reverb_wet=0.10,
               use_respiratory=True, breath_bpm=5.0, breath_bpm_end=4.0,
@@ -702,6 +727,7 @@ def _warrior():
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=40.0,
               use_saturate=True, saturate_drive=0.08,
               use_underbed=True, underbed_vol=0.010,
+              use_polyrhythmic_iso=True, polyrhythmic_ratios=[2, 3], polyrhythmic_base_freq=40.0,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
@@ -719,6 +745,7 @@ def _warrior():
               use_chaos=True, chaos_depth=0.12,
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=40.0,
               use_saturate=True, saturate_drive=0.08,
+              use_fm_carrier=True, fm_mod_index=1.2,
               use_underbed=True, underbed_vol=0.010,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
@@ -738,6 +765,7 @@ def _warrior():
               use_hrtf=True,
               use_monaural=True, monaural_vol=0.045,
               use_saturate=True, saturate_drive=0.08,
+              use_signal_sr=True, signal_sr_ratio=0.28,
               use_comfort_eq=True, block_gain=0.88,
               organic_style='focus', organic_intensity=0.70,
               seed=93),
@@ -751,6 +779,7 @@ def _warrior():
               use_monaural=True, monaural_vol=0.04,
               use_formant=True, formant_intensity=0.15,
               use_saturate=True, saturate_drive=0.08,
+              use_signal_sr=True, signal_sr_ratio=0.28,
               use_comfort_eq=True, block_gain=0.85,
               organic_style='rest', organic_intensity=0.85,
               seed=94),
@@ -765,6 +794,7 @@ def _warrior():
               use_chaos=True, chaos_depth=0.10,
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=35.0,
               use_saturate=True, saturate_drive=0.08,
+              use_polyrhythmic_iso=True, polyrhythmic_ratios=[2, 3], polyrhythmic_base_freq=40.0,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
@@ -781,6 +811,7 @@ def _warrior():
               use_hrtf=True,
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=40.0,
               use_saturate=True, saturate_drive=0.08,
+              use_polyrhythmic_iso=True, polyrhythmic_ratios=[2, 3], polyrhythmic_base_freq=40.0,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
               allow_sharp_iso=True, use_silk=True, silk_cutoff_hz=6000.0,
@@ -814,7 +845,8 @@ def _gateway_edge():
             use_wind=True, wind_vol=0.04, wind_bw=14.0,
             infra_freq=0.083, infra_depth=0.09,
             use_respiratory=True, breath_bpm=6.0, breath_bpm_end=5.0,
-            breath_depth=0.12,
+            breath_depth=0.12, breath_golden_ratio=True,
+            use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.15,
             use_formant=True, formant_intensity=0.14,
             use_saturate=True, saturate_drive=0.07,
             use_comfort_eq=True, block_gain=0.68,
@@ -840,7 +872,8 @@ def _gateway_edge():
             use_lfo_filter=True, lfo_fc=720.0, lfo_depth=280.0, lfo_rate=0.04,
             infra_freq=0.067, infra_depth=0.10,
             use_respiratory=True, breath_bpm=5.5, breath_bpm_end=4.5,
-            breath_depth=0.12,
+            breath_depth=0.12, breath_golden_ratio=True,
+            use_harmonic_binaural=True, harmonic_partials=4, harmonic_vol=0.15,
             use_formant=True, formant_intensity=0.16,
             use_saturate=True, saturate_drive=0.08,
             use_reverb=True, reverb_rt60=750.0, reverb_wet=0.09,
@@ -869,6 +902,7 @@ def _gateway_edge():
             phase_lock=True, phase_lock_depth=0.12,
             use_respiratory=True, breath_bpm=4.5, breath_bpm_end=4.0,
             breath_depth=0.13,
+            use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.12,
             use_formant=True, formant_intensity=0.10, formant_vowel='O',
             use_reverb=True, reverb_rt60=900.0, reverb_wet=0.08,
             use_comfort_eq=True, block_gain=0.55,
@@ -945,7 +979,7 @@ def _gateway_edge():
             use_hrtf=True, itd_period=12.0,
             infra_freq=0.083, infra_depth=0.09,
             use_respiratory=True, breath_bpm=5.0, breath_bpm_end=6.0,
-            breath_depth=0.11,
+            breath_depth=0.11, breath_golden_ratio=True,
             use_formant=True, formant_intensity=0.10, formant_vowel='A',
             use_saturate=True, saturate_drive=0.06,
             use_comfort_eq=True, block_gain=0.66,
@@ -987,6 +1021,8 @@ def _chakra_ascent():
                 [(b0, min(c * 0.5, 220), 0.04, 14, 14)] if i < 3 else []
             ),
             use_hrtf=True, hrtf_elevation=el, hrtf_az_sweep=0.0,
+            use_shepard_carrier=True, shepard_sweep_rate=0.02,
+            shepard_num_octaves=4, shepard_sigma=0.9,
             use_formant=True,
             formant_intensity=0.12 if not high else 0.07,
             formant_vowel=vow,
@@ -1077,6 +1113,7 @@ def _deep_dive_pro_night():
             use_comfort_eq=True, block_gain=0.58,
             intro_fade_s=20.0, outro_fade_s=30.0,
             skip_ambient_bridge=True,
+            use_signal_sr=True, signal_sr_ratio=0.25,
             seed=501
         ),
         # ── BODY OFF — analog Focus 10: body/cortex duality, then let it go
@@ -1104,6 +1141,7 @@ def _deep_dive_pro_night():
             use_comfort_eq=True, block_gain=0.55,
             intro_fade_s=25.0, outro_fade_s=30.0,
             skip_ambient_bridge=True,
+            use_signal_sr=True, signal_sr_ratio=0.25,
             seed=502
         ),
         # ── STABLE THETA — analog Focus 12: hold. No focus_mix, no motion
@@ -1125,6 +1163,7 @@ def _deep_dive_pro_night():
             use_organic=True, organic_style='void', organic_intensity=0.55,
             use_granular=True, granular_grain_ms=180.0, granular_density=2.0,
             granular_pitch_st=0.15, granular_scatter=0.6, granular_vol=0.028,
+            use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.10,
             use_saturate=True, saturate_drive=0.050,
             use_reverb=True, reverb_wet=0.060, reverb_rt60=800.0,
             use_comfort_eq=True, block_gain=0.50,
@@ -1132,8 +1171,7 @@ def _deep_dive_pro_night():
             skip_ambient_bridge=True,
             seed=503
         ),
-        # ── DEEP THETA — analog Focus 15: "living stillness" — ~7-8 min
-        #    dwell plateaus connected by ~1 min glides. Never a metronome.
+        # ── DEEP THETA — analog Focus 15: "living stillness"
         Block(
             label='DEEP DIVE — DEEP THETA', dur_s=1800,
             c0=200, c1=200, b0=6.0, b1=4.5,
@@ -1150,6 +1188,8 @@ def _deep_dive_pro_night():
             use_carrier_drift=True, carrier_drift_hz=0.45,
             use_underbed=True, underbed_vol=0.016,
             use_organic=True, organic_style='void', organic_intensity=0.42,
+            use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.10,
+            cfc_envelope_type='asymmetric', cfc_asymmetry=0.6,
             use_saturate=True, saturate_drive=0.045,
             use_reverb=True, reverb_wet=0.055, reverb_rt60=850.0,
             use_comfort_eq=True, block_gain=0.46,
@@ -1158,10 +1198,7 @@ def _deep_dive_pro_night():
             skip_ambient_bridge=True,
             seed=504
         ),
-        # ── LIMINAL — past what Monroe-style ladders script: no voice, no
-        #    focus_mix, no further guidance. One small step at the midpoint;
-        #    otherwise hold. Largest micro-wander of the session on purpose —
-        #    it is the only thing still "alive" here.
+        # ── LIMINAL
         Block(
             label='DEEP DIVE — LIMINAL', dur_s=1500,
             c0=200, c1=200, b0=4.5, b1=4.1,
@@ -1177,6 +1214,8 @@ def _deep_dive_pro_night():
             use_carrier_drift=True, carrier_drift_hz=0.40,
             use_underbed=True, underbed_vol=0.015,
             use_organic=True, organic_style='void', organic_intensity=0.30,
+            use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.10,
+            cfc_envelope_type='asymmetric', cfc_asymmetry=0.6,
             use_saturate=True, saturate_drive=0.040,
             use_reverb=True, reverb_wet=0.050, reverb_rt60=900.0,
             use_comfort_eq=True, block_gain=0.42,
@@ -1254,7 +1293,7 @@ def _active_flux():
             noise_pw=0.75, noise_bw=0.25,
             use_monaural=True, monaural_vol=0.035,
             use_respiratory=True, breath_bpm=6.0, breath_bpm_end=7.0,
-            breath_depth=0.11,
+            breath_depth=0.11, breath_golden_ratio=True,
             infra_freq=0.06, infra_depth=0.09,
             itd_period=11.0,
             use_carrier_drift=True, carrier_drift_hz=0.7,
@@ -1275,9 +1314,12 @@ def _active_flux():
             noise_pw=0.65, noise_bw=0.35,
             iso_layers=[(40.0, 200, 0.11, 8, 8)],
             cfc_theta=6.0, cfc_strength=0.55, assr_80hz_vol=0.04,
+            cfc_envelope_type='asymmetric', cfc_asymmetry=0.7,
+            use_polyrhythmic_iso=True, polyrhythmic_ratios=[3, 2], polyrhythmic_base_freq=40.0,
+            use_fm_carrier=True, fm_mod_index=1.0,
             use_monaural=True, monaural_vol=0.045,
             use_respiratory=True, breath_bpm=7.0, breath_bpm_end=8.0,
-            breath_depth=0.12,
+            breath_depth=0.12, breath_golden_ratio=True,
             infra_freq=0.07, infra_depth=0.10,
             itd_period=10.0,
             use_carrier_drift=True, carrier_drift_hz=0.8,
@@ -1309,8 +1351,7 @@ def _active_flux():
             skip_ambient_bridge=True,
             seed=703
         ),
-        # ── ACTIVATE 2 — same as ACTIVATE 1, EXCEPT fast itd_period (4s vs
-        #    10s): the one deliberate pattern-break in the session
+        # ── ACTIVATE 2 — same as ACTIVATE 1, EXCEPT fast itd_period (4s vs 10s)
         Block(
             label='FLUX — ACTIVATE 2', dur_s=270,
             c0=200, c1=200, b0=16.0, b1=17.0,
@@ -1318,9 +1359,12 @@ def _active_flux():
             noise_pw=0.65, noise_bw=0.35,
             iso_layers=[(40.0, 200, 0.11, 8, 8)],
             cfc_theta=6.0, cfc_strength=0.58, assr_80hz_vol=0.04,
+            cfc_envelope_type='asymmetric', cfc_asymmetry=0.7,
+            use_polyrhythmic_iso=True, polyrhythmic_ratios=[3, 2], polyrhythmic_base_freq=40.0,
+            use_fm_carrier=True, fm_mod_index=1.0,
             use_monaural=True, monaural_vol=0.045,
             use_respiratory=True, breath_bpm=8.0, breath_bpm_end=8.3,
-            breath_depth=0.12,
+            breath_depth=0.12, breath_golden_ratio=True,
             infra_freq=0.07, infra_depth=0.10,
             itd_period=4.0,
             use_carrier_drift=True, carrier_drift_hz=0.8,
@@ -1352,8 +1396,7 @@ def _active_flux():
             skip_ambient_bridge=True,
             seed=705
         ),
-        # ── ACTIVATE 3 — peak of the session, itd_period back to normal
-        #    (frames ACTIVATE 2 as the one that broke pattern, not this one)
+        # ── ACTIVATE 3 — peak of the session
         Block(
             label='FLUX — ACTIVATE 3', dur_s=270,
             c0=200, c1=200, b0=17.0, b1=18.0,
@@ -1361,9 +1404,12 @@ def _active_flux():
             noise_pw=0.65, noise_bw=0.35,
             iso_layers=[(40.0, 200, 0.11, 8, 8)],
             cfc_theta=6.0, cfc_strength=0.55, assr_80hz_vol=0.04,
+            cfc_envelope_type='asymmetric', cfc_asymmetry=0.7,
+            use_polyrhythmic_iso=True, polyrhythmic_ratios=[3, 2], polyrhythmic_base_freq=40.0,
+            use_fm_carrier=True, fm_mod_index=1.0,
             use_monaural=True, monaural_vol=0.045,
             use_respiratory=True, breath_bpm=8.3, breath_bpm_end=8.5,
-            breath_depth=0.12,
+            breath_depth=0.12, breath_golden_ratio=True,
             infra_freq=0.07, infra_depth=0.10,
             itd_period=10.0,
             use_carrier_drift=True, carrier_drift_hz=0.8,

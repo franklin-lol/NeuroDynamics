@@ -172,6 +172,8 @@ PROFILES = [
             'Экспериментальный паттерн, не доказанный усилитель когнитивки',
         ],
     },
+    {
+        'key':   'DEEP_DIVE_PRO',
         'title': 'DEEP DIVE PRO',
         'time':  '~121 мин (2ч)',
         'glyph': '☾',
@@ -189,6 +191,7 @@ PROFILES = [
         ],
     },
     {
+        
         'key':   'WALK',
         'title': 'ПРОГУЛКА',
         'time':  '~31 мин',
@@ -395,8 +398,6 @@ def draw_confirm(profile: dict) -> bool:
 #       progress_cb — callback передаётся в renderer.render_session().
 # ══════════════════════════════════════════
 
-_spin = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏']
-_tick = [0]
 
 
 def render_with_ui(profile: dict):

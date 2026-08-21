@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import lfilter, iirfilter, sosfilt, butter, fftconvolve, oaconvolve
+from scipy.signal import lfilter, sosfilt, butter, oaconvolve
 from .core import SR, log_sweep, jitter_envelope, build_carrier, pink_noise
 
 SCHUMANN = [7.83, 14.3, 20.8, 27.3, 33.8]
@@ -218,8 +218,11 @@ def monaural_beat_layer(dur_s: float, carrier: float,
     carrier_sig = _apply_carrier_type(ph, ctype).astype(np.float64)
     if beat_array is not None:
         B = np.asarray(beat_array[:n], dtype=np.float64)
-        if len(B) < n:
+        if len(B) == 0:
+            B = np.full(n, 7.0, dtype=np.float64)
+        elif len(B) < n:
             B = np.pad(B, (0, n - len(B)), mode='edge')
+        B = np.nan_to_num(B, nan=7.0)
         phase = 2.0 * np.pi * np.cumsum(B) / SR
         am = 0.5 + 0.5 * np.cos(phase)
     else:
@@ -265,11 +268,14 @@ def focus_mix_layer(dur_s: float, carrier: float,
 def respiratory_entrainment_mod(dur_s: float,
                                 breath_bpm: float = 6.0,
                                 depth: float      = 0.15,
-                                breath_bpm_end: float = None) -> np.ndarray:
+                                breath_bpm_end: float = None,
+                                use_golden_ratio: bool = False) -> np.ndarray:
     """
-    Open-loop breathing AM. Optional linear bpm ramp (breath_bpm → breath_bpm_end).
-    Asymmetry ≈35% inhale / 65% exhale for vagal bias.
+    Open-loop breathing AM. Optional linear bpm ramp (breath_bpm -> breath_bpm_end).
+    Asymmetry ~35% inhale / 65% exhale for vagal bias.
+    use_golden_ratio adds secondary LFO at PHI * breath_rate for fractal pattern.
     """
+    PHI = 1.6180339887498948482
     n    = int(dur_s * SR)
     t    = np.arange(n, dtype=np.float64) / SR
     if breath_bpm_end is not None and abs(breath_bpm_end - breath_bpm) > 1e-6:
@@ -280,7 +286,13 @@ def respiratory_entrainment_mod(dur_s: float,
         freq = breath_bpm / 60.0
         phase = 2.0 * np.pi * freq * t
     raw   = 0.5 + 0.5 * np.sin(phase - np.pi / 2)
-    # Stronger exhale bias (was 40:60-ish; now ~35:65)
+
+    if use_golden_ratio:
+        golden_freq = breath_bpm * PHI / 60.0
+        golden_phase = 2.0 * np.pi * golden_freq * t
+        raw = raw + 0.04 * np.sin(golden_phase)
+        raw = np.clip(raw, 0.0, 1.0)
+
     asym  = np.where(raw > 0.5,
                      0.5 + (raw - 0.5) * 1.05,
                      raw * 0.70)
@@ -312,13 +324,12 @@ def soft_ceiling(L: np.ndarray, R: np.ndarray,
     peak = max(float(np.max(np.abs(L))), float(np.max(np.abs(R)))) + 1e-9
     if peak <= ceiling - knee:
         return L.astype(np.float32), R.astype(np.float32)
-    # Soft scale: map peak → ceiling with gentle knee
     if peak <= ceiling:
-        # already under hard ceiling — mild soft compression only
-        return L.astype(np.float32), R.astype(np.float32)
-    # Scale so peak lands at ceiling * 0.98
+        t = (peak - (ceiling - knee)) / knee
+        target = peak - (peak - ceiling) * t * 0.5
+        scale = target / peak
+        return (L * scale).astype(np.float32), (R * scale).astype(np.float32)
     scale = (ceiling * 0.98) / peak
-    # Soften transition: blend toward scale when over
     return (L * scale).astype(np.float32), (R * scale).astype(np.float32)
 
 
@@ -347,7 +358,7 @@ def detuned_drone(dur_s: float, carrier: float,
                   seed: int        = 0) -> np.ndarray:
     n     = int(dur_s * SR)
     t     = np.arange(n, dtype=np.float64) / SR
-    lfo_d = 0.003 * np.sin(2 * np.pi * 0.005 * t + seed)
+    lfo_d = 0.003 * np.sin(2 * np.pi * 0.005 * t + (seed * 0.1) % (2 * np.pi))
     freqs = [carrier - detune_hz - lfo_d * 0.5,
              carrier,
              carrier + detune_hz + lfo_d * 0.5]
@@ -381,7 +392,7 @@ def resonant_wind_pad(dur_s: float, carrier: float,
     peak = np.max(np.abs(flt)) + 1e-9
     t   = np.arange(n, dtype=np.float32) / SR
     lfo = 0.7 + 0.3 * np.sin(2 * np.pi * 0.05 * t + seed * 0.9)
-    return (flt / peak * vol * lfo)
+    return (flt / peak * vol * lfo).astype(np.float32)
 
 
 # ══════════════════════════════════════════════════════════
@@ -456,7 +467,6 @@ def isochronic(dur_s, freq, carrier=200.0, vol=0.14,
     t    = np.arange(n, dtype=np.float64) / SR
     # Raised-cosine gate (softer than hard square before smoothing)
     gate = (0.5 + 0.5 * np.sin(2 * np.pi * freq * t)).astype(np.float32)
-    gate = (gate >= 0.5).astype(np.float32)
 
     if smooth_ms is not None:
         rn = int(smooth_ms * 0.001 * SR)
@@ -481,13 +491,39 @@ def isochronic(dur_s, freq, carrier=200.0, vol=0.14,
     return (tone * gate * env * vol).astype(np.float32)
 
 
-def apply_cfc(gamma_sig, dur_s, theta_freq=6.0, strength=0.5):
+def apply_cfc(gamma_sig, dur_s, theta_freq=6.0, strength=0.5,
+              envelope_type='sine', asymmetry=0.5):
+    """
+    Cross-frequency coupling: theta envelope modulates gamma amplitude.
+
+    envelope_type: 'sine' (symmetric, default) or 'asymmetric' (sawtooth-like).
+    asymmetry: fraction of theta cycle for ramp-up (0.5=symmetric, 0.8=sharp drop).
+    """
     n   = len(gamma_sig)
     t   = np.arange(n, dtype=np.float64) / SR
-    # Cap CFC strength contribution to roughness
     strength = min(float(strength), 0.55)
-    env = 1.0 - strength + strength * (0.5 - 0.5 * np.sin(2 * np.pi * theta_freq * t))
-    return (gamma_sig * env.astype(np.float32))
+    theta_phase = np.mod(2 * np.pi * theta_freq * t, 2 * np.pi)
+
+    if envelope_type == 'asymmetric':
+        ramp_up = np.clip(asymmetry, 0.1, 0.9)
+        phase_norm = theta_phase / (2 * np.pi)
+        env_theta = np.where(
+            phase_norm < ramp_up,
+            phase_norm / ramp_up,
+            1.0 - (phase_norm - ramp_up) / (1.0 - ramp_up) * 0.1
+        )
+        from scipy.signal import savgol_filter
+        window = min(n, int(SR * 0.01))
+        if window > 3 and window % 2 == 0:
+            window += 1
+        if window > 3:
+            env_theta = savgol_filter(env_theta, window, 2)
+        env_theta = np.clip(env_theta, 0.0, 1.0)
+    else:
+        env_theta = 0.5 - 0.5 * np.sin(2 * np.pi * theta_freq * t)
+
+    env = (1.0 - strength + strength * env_theta).astype(np.float32)
+    return (gamma_sig * env)
 
 
 def assr_80hz(dur_s, carrier=200.0, vol=0.05):
@@ -638,3 +674,185 @@ def structured_quiet(dur_s: float = 60.0, vol: float = 0.012,
     bed[:fn] *= ramp
     bed[-fn:] *= ramp[::-1]
     return bed.astype(np.float32), bed.astype(np.float32)
+
+
+# ══════════════════════════════════════════════════════════
+#  HARMONIC SERIES BINAURAL — redundant entrainment across spectral channels
+# ══════════════════════════════════════════════════════════
+
+def harmonic_binaural(dur_s: float,
+                      base_carrier: float,
+                      beat_freq: float,
+                      num_partials: int = 4,
+                      vol: float = 0.30,
+                      carrier_types: list = None,
+                      carrier_jitter: float = 1.0,
+                      seed: int = 0) -> tuple:
+    """
+    Harmonic series binaural: n partials at n*base_carrier, all sharing the
+    same beat_freq. Creates redundant entrainment across spectral channels.
+    Per-partial carrier jitter for warmth and anti-metallic feel.
+    """
+    n = int(dur_s * SR)
+    t = np.arange(n, dtype=np.float64) / SR
+    L = np.zeros(n, dtype=np.float64)
+    R = np.zeros(n, dtype=np.float64)
+
+    if carrier_types is None:
+        carrier_types = ['sine'] * num_partials
+
+    for i in range(num_partials):
+        harm_n = i + 1
+        c = base_carrier * harm_n
+        amp = 1.0 / harm_n
+        ct = carrier_types[i % len(carrier_types)]
+
+        jitter = pink_noise(n, seed + i * 77).astype(np.float64)
+        jitter /= np.max(np.abs(jitter)) + 1e-9
+        C = c + jitter * carrier_jitter
+
+        pL = 2.0 * np.pi * np.cumsum(C) / SR
+        pR = 2.0 * np.pi * np.cumsum(C + beat_freq) / SR
+
+        L += _apply_carrier_type(pL, ct).astype(np.float64) * amp
+        R += _apply_carrier_type(pR, ct).astype(np.float64) * amp
+
+    peak = max(np.max(np.abs(L)), np.max(np.abs(R))) + 1e-9
+    L = (L / peak * vol).astype(np.float32)
+    R = (R / peak * vol).astype(np.float32)
+    return L, R
+
+
+# ══════════════════════════════════════════════════════════
+#  POLYRHYTHMIC ISOCHRONIC — multiple layers at frequency ratios
+# ══════════════════════════════════════════════════════════
+
+def polyrhythmic_isochronic(dur_s: float,
+                            ratios: list = None,
+                            base_freq: float = 6.0,
+                            carriers: list = None,
+                            vols: list = None,
+                            attack_s: float = 8.0,
+                            decay_s: float = 8.0,
+                            seed: int = 0) -> np.ndarray:
+    """
+    Multiple isochronic layers at polyrhythmic ratios of a base frequency.
+    E.g. ratios=[3,2] at base_freq=6 -> layers at 6Hz and 4Hz.
+    Each layer on a different carrier for spectral separation.
+    """
+    if ratios is None:
+        ratios = [3, 2]
+    n_layers = len(ratios)
+    if carriers is None:
+        carriers = [200.0 + i * 40 for i in range(n_layers)]
+    if vols is None:
+        vols = [0.06 / n_layers] * n_layers
+
+    out = np.zeros(int(dur_s * SR), dtype=np.float32)
+    for i, (ratio, carrier, vol) in enumerate(zip(ratios, carriers, vols)):
+        freq = base_freq * ratio / ratios[0]
+        layer = isochronic(dur_s, freq, carrier, vol,
+                          attack_s, decay_s,
+                          carrier_type='soft')
+        out += layer
+    return out
+
+
+# ══════════════════════════════════════════════════════════
+#  FM CARRIER — modulator at brainwave frequency
+# ══════════════════════════════════════════════════════════
+
+def fm_carrier(dur_s: float,
+               carrier_freq: float,
+               mod_freq: float = 0.0,
+               mod_index: float = 1.0,
+               beat_freq: float = 10.0,
+               vol: float = 0.30) -> tuple:
+    """
+    FM synthesis carrier where modulator runs at brainwave frequency.
+    Creates difference tones that match the target beat frequency.
+    """
+    n = int(dur_s * SR)
+    t = np.arange(n, dtype=np.float64) / SR
+
+    if mod_freq <= 0:
+        mod_freq = beat_freq
+
+    mod_phase = 2.0 * np.pi * mod_freq * t
+    fm_L = carrier_freq * t + (mod_index * mod_freq / (2.0 * np.pi)) * np.sin(mod_phase)
+    fm_R = (carrier_freq + beat_freq) * t + (mod_index * mod_freq / (2.0 * np.pi)) * np.sin(mod_phase)
+
+    L = (vol * np.sin(2.0 * np.pi * fm_L)).astype(np.float32)
+    R = (vol * np.sin(2.0 * np.pi * fm_R)).astype(np.float32)
+    return L, R
+
+
+# ══════════════════════════════════════════════════════════
+#  SHEPARD CARRIER — infinite pitch illusion with binaural beat
+# ══════════════════════════════════════════════════════════
+
+def shepard_carrier(dur_s: float,
+                    center_freq: float = 300.0,
+                    sweep_rate: float = 0.05,
+                    beat_freq: float = 10.0,
+                    num_octaves: int = 5,
+                    sigma: float = 1.0,
+                    vol: float = 0.20,
+                    seed: int = 0) -> tuple:
+    """
+    Shepard tone carrier: octave-stacked sinusoids with Gaussian spectral
+    envelope. center_freq sweeps slowly for infinite pitch illusion.
+    Beat offset applied to all octaves simultaneously.
+    """
+    n = int(dur_s * SR)
+    t = np.arange(n, dtype=np.float64) / SR
+    L = np.zeros(n, dtype=np.float64)
+    R = np.zeros(n, dtype=np.float64)
+
+    cf = center_freq * np.power(2.0, sweep_rate * t / center_freq)
+
+    for octave in range(-num_octaves // 2, num_octaves // 2 + 1):
+        log_dist = octave
+        weight = np.exp(-0.5 * (log_dist / sigma) ** 2)
+        if weight < 0.01:
+            continue
+        f_oct = cf * np.power(2.0, octave)
+        pL = 2.0 * np.pi * np.cumsum(f_oct) / SR
+        pR = 2.0 * np.pi * np.cumsum(f_oct + beat_freq) / SR
+        L += weight * np.sin(pL)
+        R += weight * np.sin(pR)
+
+    peak = max(np.max(np.abs(L)), np.max(np.abs(R))) + 1e-9
+    L = (L / peak * vol).astype(np.float32)
+    R = (R / peak * vol).astype(np.float32)
+    return L, R
+
+
+# ══════════════════════════════════════════════════════════
+#  SR NOISE ON ENTRAINMENT — per-channel calibrated noise
+# ══════════════════════════════════════════════════════════
+
+def apply_sr_noise(signal_L: np.ndarray,
+                   signal_R: np.ndarray,
+                   sr_ratio: float = 0.282,
+                   seed: int = 0) -> tuple:
+    """
+    Apply calibrated stochastic resonance noise directly to an entrainment
+    signal (not just ambient bed). Per-channel independent noise for
+    stereo decorrelation.
+    """
+    from .core import morph_noise
+
+    n = len(signal_L)
+    nz_L = morph_noise(n, 0.5, 0.5, seed)
+    nz_R = morph_noise(n, 0.5, 0.5, seed + 999)
+
+    sig_rms_L = np.sqrt(np.mean(signal_L**2)) + 1e-9
+    sig_rms_R = np.sqrt(np.mean(signal_R**2)) + 1e-9
+    nz_rms_L = np.sqrt(np.mean(nz_L**2)) + 1e-9
+    nz_rms_R = np.sqrt(np.mean(nz_R**2)) + 1e-9
+
+    nz_L = (nz_L * (sig_rms_L * sr_ratio / nz_rms_L)).astype(np.float32)
+    nz_R = (nz_R * (sig_rms_R * sr_ratio / nz_rms_R)).astype(np.float32)
+
+    return (signal_L + nz_L).astype(np.float32), (signal_R + nz_R).astype(np.float32)

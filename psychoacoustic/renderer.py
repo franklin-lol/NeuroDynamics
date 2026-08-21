@@ -122,6 +122,20 @@ def export_map(blocks: List[Block], profile: str, out_path: str,
         if getattr(b, 'use_focus_mix', False):
             flags.append(f"FocusMix body={b.focus_body_beat} cortex={b.focus_cortex_beat}")
         if b.use_comfort_eq:  flags.append("ComfortEQ")
+        if getattr(b, 'use_harmonic_binaural', False):
+            flags.append(f"HarmBinaural {b.harmonic_partials}p")
+        if getattr(b, 'use_polyrhythmic_iso', False):
+            flags.append(f"PolyISO {b.polyrhythmic_ratios}")
+        if getattr(b, 'cfc_envelope_type', 'sine') == 'asymmetric':
+            flags.append(f"AsymPAC a={b.cfc_asymmetry}")
+        if getattr(b, 'use_signal_sr', False):
+            flags.append(f"SignalSR {b.signal_sr_ratio}")
+        if getattr(b, 'use_fm_carrier', False):
+            flags.append(f"FMCarr idx={b.fm_mod_index}")
+        if getattr(b, 'use_shepard_carrier', False):
+            flags.append(f"Shepard {b.shepard_num_octaves}oct")
+        if getattr(b, 'breath_golden_ratio', False):
+            flags.append("GoldenBreath")
         if flags:
             lines.append("        " + "  ·  ".join(flags))
         lines.append("")
