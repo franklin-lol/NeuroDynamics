@@ -156,6 +156,7 @@ def _genesis():
             breath_depth=0.14,
             use_comfort_eq=True, block_gain=0.62,
             use_focus_mix=True, focus_body_beat=1.5, focus_cortex_beat=8.0,
+            use_subharmonic=True, subharmonic_depth=4, subharmonic_vol=0.06,
             quiet_before_s=60.0,
             seed=5
         ),
@@ -241,6 +242,7 @@ def _walk():
             use_comfort_eq=True, block_gain=0.78,
             use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
             breath_golden_ratio=True,
+            use_underbed=True, underbed_vol=0.015,
             seed=41
         ),
         Block(
@@ -262,6 +264,7 @@ def _walk():
             use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
             use_comfort_eq=True, block_gain=0.76,
             use_polyrhythmic_iso=True, polyrhythmic_ratios=[3, 2], polyrhythmic_base_freq=6.0,
+            use_underbed=True, underbed_vol=0.015,
             seed=42
         ),
         Block(
@@ -285,6 +288,7 @@ def _walk():
             use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
             use_comfort_eq=True, block_gain=0.76,
             use_polyrhythmic_iso=True, polyrhythmic_ratios=[3, 2], polyrhythmic_base_freq=6.0,
+            use_underbed=True, underbed_vol=0.015,
             seed=43
         ),
         Block(
@@ -303,6 +307,7 @@ def _walk():
             use_comfort_eq=True, block_gain=0.78,
             use_respiratory=True, breath_bpm=6.0, breath_depth=0.11,
             breath_golden_ratio=True,
+            use_underbed=True, underbed_vol=0.015,
             seed=44
         ),
     ]
@@ -347,6 +352,7 @@ def _sleep():
               use_focus_mix=True, focus_body_beat=2.0, focus_cortex_beat=9.0,
               use_monaural=True, monaural_vol=0.025,
               use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.12,
+              use_subharmonic=True, subharmonic_depth=4, subharmonic_vol=0.06,
               block_gain=0.52, use_comfort_eq=True,
               seed=53),
 
@@ -397,6 +403,7 @@ def _sleep():
               use_respiratory=True, breath_bpm=4.0, breath_depth=0.14,
               use_focus_mix=True, focus_body_beat=1.5, focus_cortex_beat=8.0,
               use_harmonic_binaural=True, harmonic_partials=3, harmonic_vol=0.12,
+              use_subharmonic=True, subharmonic_depth=4, subharmonic_vol=0.06,
               block_gain=0.52, use_comfort_eq=True,
               seed=57),
 
@@ -534,6 +541,7 @@ def _healer():
               use_focus_mix=True, focus_body_beat=1.5, focus_cortex_beat=8.0,
               use_shepard_carrier=True, shepard_sweep_rate=0.03, shepard_sigma=0.8,
               use_signal_sr=True, signal_sr_ratio=0.25,
+              use_subharmonic=True, subharmonic_depth=4, subharmonic_vol=0.065,
               block_gain=0.52, use_comfort_eq=True,
               quiet_before_s=60.0,
               seed=73),
@@ -670,6 +678,7 @@ def _oracle():
               use_fm_carrier=True, fm_mod_index=0.8,
               use_formant=True, formant_intensity=0.18,
               use_reverb=True, reverb_rt60=1000.0, reverb_wet=0.10,
+              use_subharmonic=True, subharmonic_depth=4, subharmonic_vol=0.07,
               use_respiratory=True, breath_bpm=5.0, breath_bpm_end=4.0,
               breath_depth=0.13,
               use_focus_mix=True, focus_body_beat=2.0, focus_cortex_beat=9.0,
@@ -725,7 +734,7 @@ def _warrior():
               assr_80hz_vol=0.06, itd_period=8.0,
               use_hrtf=True,
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=40.0,
-              use_saturate=True, saturate_drive=0.08,
+              use_saturate=True, saturate_drive=0.10,
               use_underbed=True, underbed_vol=0.010,
               use_polyrhythmic_iso=True, polyrhythmic_ratios=[2, 3], polyrhythmic_base_freq=40.0,
               soft_ceiling_fs=0.52, block_gain=0.95,
@@ -744,7 +753,7 @@ def _warrior():
               use_hrtf=True,
               use_chaos=True, chaos_depth=0.12,
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=40.0,
-              use_saturate=True, saturate_drive=0.08,
+              use_saturate=True, saturate_drive=0.10,
               use_fm_carrier=True, fm_mod_index=1.2,
               use_underbed=True, underbed_vol=0.010,
               soft_ceiling_fs=0.52, block_gain=0.95,
@@ -764,10 +773,11 @@ def _warrior():
               assr_80hz_vol=0.045, itd_period=8.0,
               use_hrtf=True,
               use_monaural=True, monaural_vol=0.045,
-              use_saturate=True, saturate_drive=0.08,
+              use_saturate=True, saturate_drive=0.09,
               use_signal_sr=True, signal_sr_ratio=0.28,
               use_comfort_eq=True, block_gain=0.88,
               organic_style='focus', organic_intensity=0.70,
+              use_underbed=True, underbed_vol=0.012,
               seed=93),
 
         Block(label='WARRIOR — THETA TOUCH', dur_s=480,
@@ -782,6 +792,7 @@ def _warrior():
               use_signal_sr=True, signal_sr_ratio=0.28,
               use_comfort_eq=True, block_gain=0.85,
               organic_style='rest', organic_intensity=0.85,
+              use_underbed=True, underbed_vol=0.014,
               seed=94),
 
         Block(label='WARRIOR — RELOAD', dur_s=600,
@@ -793,7 +804,7 @@ def _warrior():
               use_hrtf=True,
               use_chaos=True, chaos_depth=0.10,
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=35.0,
-              use_saturate=True, saturate_drive=0.08,
+              use_saturate=True, saturate_drive=0.09,
               use_polyrhythmic_iso=True, polyrhythmic_ratios=[2, 3], polyrhythmic_base_freq=40.0,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
@@ -801,6 +812,7 @@ def _warrior():
               organic_style='minimal', organic_intensity=0.38,
               carrier_drift_hz=0.45, spectral_breath_mix=0.05,
               intro_fade_s=6.0,
+              use_underbed=True, underbed_vol=0.010,
               seed=95),
 
         Block(label='WARRIOR — LOCK', dur_s=540,
@@ -810,7 +822,7 @@ def _warrior():
               assr_80hz_vol=0.07, itd_period=5.0,
               use_hrtf=True,
               use_monaural=True, monaural_vol=0.055, monaural_beat_hz=40.0,
-              use_saturate=True, saturate_drive=0.08,
+              use_saturate=True, saturate_drive=0.10,
               use_polyrhythmic_iso=True, polyrhythmic_ratios=[2, 3], polyrhythmic_base_freq=40.0,
               soft_ceiling_fs=0.52, block_gain=0.95,
               am_depth_cap=0.30,
@@ -818,6 +830,7 @@ def _warrior():
               organic_style='minimal', organic_intensity=0.35,
               carrier_drift_hz=0.40, spectral_breath_mix=0.04,
               intro_fade_s=6.0,
+              use_underbed=True, underbed_vol=0.010,
               seed=96),
     ]
 

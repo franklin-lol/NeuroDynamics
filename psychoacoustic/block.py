@@ -107,6 +107,10 @@ class Block:
     carrier_drift_rate: float = 0.018
     use_spectral_breath: bool = True     # mild wet LP morph on full mix
     spectral_breath_mix: float = 0.10
+    # ── Subharmonic resonator (f/2, f/3, f/4 body resonance)
+    use_subharmonic:    bool  = False
+    subharmonic_depth:  int   = 4        # number of subharmonics
+    subharmonic_vol:    float = 0.07
     # ── Adaptive beat drift (habituation-resistant path; skips pink beat jitter)
     # beat_ctrl: list of (frac 0..1, beat_hz) control points
     beat_ctrl:          Optional[list] = None
@@ -168,7 +172,8 @@ class Block:
                             comfort_filter, soft_ceiling, budget_am_depths,
                             underbed_noise, focus_mix_layer, silk_lowpass,
                             harmonic_binaural, polyrhythmic_isochronic,
-                            fm_carrier, shepard_carrier, apply_sr_noise)
+                            fm_carrier, shepard_carrier, apply_sr_noise,
+                            subharmonic_resonator, hilbert_spatial_rotation)
         from .chaos import chaos_modulate
         from .hrtf  import hrtf_externalize
         from .phi   import phi_beat_layer
@@ -186,8 +191,11 @@ class Block:
         else:
             B_raw = log_sweep(self.b0, self.b1, n)
             if self.use_chaos:
+                # Chua circuit for blocks ≥10 min (greater ergodicity)
+                use_chua = self.dur_s >= 600.0
                 B_raw = chaos_modulate(B_raw, depth=self.chaos_depth,
-                                       seed=self.seed + 400)
+                                       seed=self.seed + 400,
+                                       use_chua=use_chua)
             else:
                 B_raw = jitter_envelope(B_raw, self.beat_jitter, self.seed + 50)
 
@@ -274,14 +282,14 @@ class Block:
                                     vol=0.14, seed=self.seed)
             L += pL; R += pR
 
-        # ── Detuned drone pad
+    # ── Detuned drone pad
         if self.use_drone:
-            pad = detuned_drone(self.dur_s, self.c0,
-                                detune_hz=self.drone_detune,
-                                vol=self.drone_vol,
-                                ctype=self.carrier_type,
-                                seed=self.seed + 600)
-            L += pad; R += pad
+            pad_L, pad_R = detuned_drone(self.dur_s, self.c0,
+                                         detune_hz=self.drone_detune,
+                                         vol=self.drone_vol,
+                                         ctype=self.carrier_type,
+                                         seed=self.seed + 600)
+            L += pad_L; R += pad_R
 
         # ── ATMOSPHERE: Granular cloud
         if self.use_granular:
@@ -369,9 +377,9 @@ class Block:
 
         # ── Continuous underbed
         if self.use_underbed and self.underbed_vol > 0:
-            bed = underbed_noise(self.dur_s, vol=self.underbed_vol,
-                                 seed=self.seed + 1200)
-            L += bed; R += bed
+            bed_L, bed_R = underbed_noise(self.dur_s, vol=self.underbed_vol,
+                                          seed=self.seed + 1200)
+            L += bed_L; R += bed_R
 
         # ── Premium organic atmosphere (river / ghosts / bowls)
         if self.use_organic and self.organic_intensity > 0:
@@ -392,6 +400,16 @@ class Block:
                 seed=self.seed + 1400,
                 ctype=octype)
             L += oL; R += oR
+
+        # ── Subharmonic resonator (body resonance)
+        if self.use_subharmonic and self.subharmonic_vol > 0:
+            sub_L, sub_R = subharmonic_resonator(
+                self.dur_s,
+                carrier_hz=0.5 * (float(self.c0) + float(self.c1)),
+                depth=self.subharmonic_depth,
+                vol=self.subharmonic_vol,
+                seed=self.seed + 2000)
+            L += sub_L; R += sub_R
 
         # ── LFO filter sweep
         if self.use_lfo_filter:
@@ -418,8 +436,10 @@ class Block:
         if self.use_saturate:
             from .organic import _smooth_wander
             n_sat = len(L)
-            wander = _smooth_wander(n_sat, self.seed + 1700, cutoff=0.045)
-            drive_t = self.saturate_drive * (1.0 + 0.25 * wander)
+            # Dual-layer wander: primary (0.045 Hz) + secondary (0.012 Hz)
+            wander1 = _smooth_wander(n_sat, self.seed + 1700, cutoff=0.045)
+            wander2 = _smooth_wander(n_sat, self.seed + 1701, cutoff=0.012)
+            drive_t = self.saturate_drive * (1.0 + 0.25 * wander1 + 0.08 * wander2)
             L = tube_saturate(L, drive_t)
             R = tube_saturate(R, drive_t)
 
@@ -465,7 +485,11 @@ class Block:
                                        el_period=self.el_period,
                                        el_depth=self.el_depth)
         elif self.itd_period > 0:
-            L, R = spatial_rotation(L, R, self.itd_period)
+            # Hilbert rotation for fast periods (<10s) to avoid comb-filter
+            if self.itd_period < 10.0:
+                L, R = hilbert_spatial_rotation(L, R, self.itd_period)
+            else:
+                L, R = spatial_rotation(L, R, self.itd_period)
 
         # AM depth budget: infra + respiratory share one cap
         infra_d = self.infra_depth if self.infra_freq > 0 else 0.0

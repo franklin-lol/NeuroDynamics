@@ -17,8 +17,12 @@
 *   **Monaural AM**, синхронизированный со sweep бинаурала (двойной pathway).
 *   **Isochronic soft-gate v2** + ASSR-80 с усиленным сглаживанием (меньше roughness).
 *   **Open-loop дыхательная AM** (4–6 BPM, ramp, exhale bias) — без датчиков.
-*   **HRTF** (аналитика Brown–Duda / Woodworth), Schumann stack, Lorenz-jitter биения, φ-layer, granular, formant, soft tube, reverb.
-*   **Master chain:** pre-norm → Comfort EQ → soft ceiling → `block_gain`; continuous underbed; equal-power crossfade на близких несущих; structured quiet перед void/OBE.
+*   **HRTF** (аналитика Brown–Duda / Woodworth), Schumann stack, Chua/Lorenz-jitter биения, φ-layer, granular, formant, soft tube, reverb.
+*   **Subharmonic resonator** (f/2, f/3, f/4) — телесный резонанс без прямой низкочастотной стимуляции (глубокие профили).
+*   **Dual-wander tube saturate** — двухслойная аналоговая модуляция (0.045 Hz + 0.012 Hz thermal drift).
+*   **Hilbert spatial rotation** — квадратурная пространственная модуляция без гребенчатого фильтра (fast rotation <10s).
+*   **Phase-continuous carrier** — розовый микро-детюнинг несущей (±0.03 Hz) устраняет монотонный резонанс на длинных блоках.
+*   **Master chain:** pre-norm → Comfort EQ → soft ceiling → `block_gain`; continuous underbed; seamless joins (zero-pause) для идентичных несущих; structured quiet перед void/OBE.
 
 ## Научная рамка (честно)
 
@@ -26,7 +30,12 @@
 
 | В коде | Корректная формулировка |
 |--------|-------------------------|
+| Chua circuit chaos | Двухскролльный аттрактор с большей эргодичностью (автовключение для блоков ≥10 мин), детерминированный jitter частоты биения |
 | Lorenz на beat envelope | Детерминированный jitter частоты биения (~0.5–3 Hz), гипотеза «менее предсказуемого» паттерна |
+| Subharmonic resonator | f/2, f/3, f/4 ниже основной несущей — гипотеза телесного резонанса (череп ~120 Hz, грудь ~60 Hz) без прямой стимуляции сабом |
+| Hilbert spatial rotation | Квадратурная фазовая модуляция L/R при быстрых вращениях (<10s period) для устранения гребенчатого фильтра |
+| Phase-continuous carrier | Розовый микро-wander (±0.03 Hz, <0.01 Hz cutoff) устраняет монотонный резонанс стоячих волн на длинных блоках |
+| Dual-wander saturate | Двухслойная модуляция drive (0.045 Hz + 0.012 Hz) — имитация thermal drift лампового усилителя |
 | `apply_cfc` | Амплитудная модуляция gamma-слоя тета-синусом (упрощённый open-loop PAC), не измеренный hippocampal CFC |
 | Respiratory AM | Фиксированный/рамповый open-loop pacing; не closed-loop HRV |
 | φ-layer | Гармонический / геометрический слой носителя и биения |

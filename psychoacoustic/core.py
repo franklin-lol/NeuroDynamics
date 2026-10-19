@@ -23,6 +23,23 @@ def brown_noise(n, seed=0):
     return x - x.mean()
 
 
+def fractional_noise(n: int, alpha: float = 1.0, seed: int = 0) -> np.ndarray:
+    """
+    1/f^α noise. alpha=0→white, alpha=1→pink, alpha=2→brown.
+    Allows precise psychoacoustic masking tuning per profile.
+    """
+    rng = _rng(seed)
+    white = rng.standard_normal(n)
+    fft_white = np.fft.rfft(white)
+    freqs = np.fft.rfftfreq(n, 1.0 / SR)
+    freqs[0] = 1e-9  # avoid division by zero
+    envelope = 1.0 / (freqs ** alpha)
+    fft_colored = fft_white * envelope
+    colored = np.fft.irfft(fft_colored, n)
+    colored /= (np.max(np.abs(colored)) + 1e-9)
+    return colored.astype(np.float32)
+
+
 def morph_noise(n, pw, bw, seed=0):
     p = pink_noise(n, seed);    p /= np.max(np.abs(p)) + 1e-9
     b = brown_noise(n, seed+1); b /= np.max(np.abs(b)) + 1e-9
@@ -66,6 +83,7 @@ def build_carrier(c0, c1, n, jitter_depth=2.0, seed=0,
     Linear carrier sweep + pink micro-jitter.
     Optional ultra-slow drift_depth (Hz) keeps the note alive without
     altering the binaural beat difference.
+    Includes ultra-slow pink wander (±0.03 Hz) to prevent monotonous resonance.
     """
     base = np.linspace(c0, c1, n, dtype=np.float64)
     d    = pink_noise(n, seed + 200).astype(np.float64)
@@ -75,6 +93,13 @@ def build_carrier(c0, c1, n, jitter_depth=2.0, seed=0,
         from .organic import carrier_drift_hz
         out = out + carrier_drift_hz(n, depth_hz=float(drift_depth),
                                      rate_hz=float(drift_rate), seed=seed + 211)
+    # Ultra-slow pink wander (±0.03 Hz) — prevents standing wave resonance fatigue
+    micro_wander = pink_noise(n, seed + 212).astype(np.float64)
+    a_micro = float(np.exp(-2.0 * np.pi * 0.005 / SR))  # cutoff 0.005 Hz
+    micro_wander = lfilter([1.0 - a_micro], [1.0, -a_micro], micro_wander)
+    micro_wander -= micro_wander.mean()
+    micro_wander /= (np.max(np.abs(micro_wander)) + 1e-9)
+    out = out + micro_wander * 0.03  # ±0.03 Hz peak
     return out
 
 

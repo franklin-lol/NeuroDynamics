@@ -270,16 +270,18 @@ def render_session(blocks: List[Block],
                 sil = 0.35
                 fade = max(fade_s, 12.0)  # longer ease across carrier jumps
             else:
-                # Same carrier does NOT mean phase-aligned: two independently
-                # -phased tonal blocks summed via equal-power weights can
-                # destructively interfere (confirmed empirically — a real
-                # multi-block render showed a 45s/-52dB dropout here that
-                # vanished once this join used a short gap instead of an
-                # amplitude sum). A short silence costs far less than an
-                # unpredictable near-total dropout.
-                use_ep = False
-                sil = 0.30
-                fade = fade_s
+                # Same carrier: seamless join with NO silence (unless carrier_type changes)
+                type_changed = prev_block.carrier_type != block.carrier_type
+                if type_changed:
+                    # Type change needs short phase reset
+                    use_ep = False
+                    sil = 0.05
+                    fade = fade_s
+                else:
+                    # Identical carrier + type: true seamless join
+                    use_ep = True
+                    sil = 0.0
+                    fade = fade_s
 
             # Extra-soft entry after structured quiet / into interrupt-like labels
             if qb > 0 or 'INTERRUPT' in block.label.upper():

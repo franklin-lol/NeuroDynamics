@@ -127,10 +127,12 @@ def comfort_filter(L: np.ndarray, R: np.ndarray,
                    low_hz:  float = 100.0,
                    low_db:  float = 1.5,
                    high_hz: float = 6500.0,
-                   high_db: float = -3.5) -> tuple:
+                   high_db: float = -3.5,
+                   spectral_tilt: bool = True) -> tuple:
     """
     Mastering EQ: warm low shelf + stronger high silk (anti-whistle).
     high_db default −3.5 @ 6.5 kHz (was −2.5 @ 7.5) for permanent listening.
+    spectral_tilt=True adds gentle −0.5 dB/oct gradient (200 Hz–4 kHz) for analog warmth.
     """
     nyq   = SR / 2.0
     A_low = 10 ** (low_db  / 20.0)
@@ -139,12 +141,28 @@ def comfort_filter(L: np.ndarray, R: np.ndarray,
     w_hi  = np.clip(high_hz / nyq, 0.001, 0.499)
     sos_lo = butter(1, w_lo, btype='low',  output='sos')
     sos_hi = butter(1, w_hi, btype='high', output='sos')
+
+    # Spectral tilt shelf (200 Hz–4 kHz) for analog character
+    tilt_sos = None
+    if spectral_tilt:
+        # −0.5 dB/oct from 200 Hz to 4 kHz = ~−2.15 dB total across 4.3 octaves
+        tilt_db = -2.15
+        A_tilt = 10 ** (tilt_db / 20.0)
+        w_tilt = np.clip(200.0 / nyq, 0.001, 0.499)
+        tilt_sos = butter(1, w_tilt, btype='high', output='sos')
+
     out = []
     for sig in (L, R):
         s   = sig.astype(np.float64)
         lo  = sosfilt(sos_lo, s)
         hi  = sosfilt(sos_hi, s)
         mid = s - lo - hi
+
+        if tilt_sos is not None:
+            tilt_hi = sosfilt(tilt_sos, s)
+            tilt_lo = s - tilt_hi
+            s = tilt_lo + tilt_hi * A_tilt
+
         out.append((lo * A_low + mid + hi * A_hi).astype(np.float32))
     return out[0], out[1]
 
@@ -339,12 +357,17 @@ def soft_ceiling(L: np.ndarray, R: np.ndarray,
 
 def underbed_noise(dur_s: float, vol: float = 0.018,
                    pink_w: float = 0.65, brown_w: float = 0.35,
-                   seed: int = 0) -> np.ndarray:
-    """Quiet morph noise bed (~ -35 dBFS at vol=0.018)."""
+                   seed: int = 0) -> tuple:
+    """Quiet morph noise bed (~ -35 dBFS at vol=0.018) with Haas stereo."""
     from .core import morph_noise
     n = int(dur_s * SR)
-    nz = morph_noise(n, pink_w, brown_w, seed)
-    return (nz * vol).astype(np.float32)
+    nz = morph_noise(n, pink_w, brown_w, seed) * vol
+    L = nz.astype(np.float32)
+    # Haas decorrelation for R
+    rng = np.random.RandomState(int(seed + 999) & 0xFFFFFFFF)
+    delay_samples = int(SR * rng.uniform(0.0004, 0.0010))
+    R = np.roll(nz, delay_samples).astype(np.float32) * 0.97
+    return L, R
 
 
 # ══════════════════════════════════════════════════════════
@@ -355,7 +378,8 @@ def detuned_drone(dur_s: float, carrier: float,
                   detune_hz: float = 0.15,
                   vol: float       = 0.14,
                   ctype: str       = 'warm',
-                  seed: int        = 0) -> np.ndarray:
+                  seed: int        = 0) -> tuple:
+    """Detuned drone pad with Haas stereo decorrelation."""
     n     = int(dur_s * SR)
     t     = np.arange(n, dtype=np.float64) / SR
     lfo_d = 0.003 * np.sin(2 * np.pi * 0.005 * t + (seed * 0.1) % (2 * np.pi))
@@ -371,7 +395,12 @@ def detuned_drone(dur_s: float, carrier: float,
             ph = 2 * np.pi * f_arr * t
         out += v * _apply_carrier_type(ph, ctype)
     out /= (np.max(np.abs(out)) + 1e-9)
-    return (out * vol).astype(np.float32)
+    L = (out * vol).astype(np.float32)
+    # Haas decorrelation: 0.3–1.2 ms delay for R
+    rng = np.random.RandomState(int(seed) & 0xFFFFFFFF)
+    delay_samples = int(SR * rng.uniform(0.0003, 0.0012))
+    R = np.roll(L, delay_samples) * 0.98
+    return L, R
 
 
 # ══════════════════════════════════════════════════════════
@@ -576,6 +605,63 @@ def spatial_rotation_3d(L, R, az_period=12.0, el_period=29.0, el_depth=0.35):
     return (Laz * el_gain * el_spread), (Raz * el_gain / el_spread)
 
 
+def hilbert_spatial_rotation(L: np.ndarray, R: np.ndarray,
+                              period_s: float = 12.0) -> tuple:
+    """
+    Phase-decorrelated rotation via Hilbert transform.
+    Eliminates comb-filter artifacts at fast rotation rates (<10s period).
+    """
+    from scipy.signal import hilbert
+    n = len(L)
+    t = np.arange(n, dtype=np.float64) / SR
+    L_analytic = hilbert(L.astype(np.float64))
+    R_analytic = hilbert(R.astype(np.float64))
+    rot = np.exp(1j * 2.0 * np.pi * t / period_s)
+    L_rot = np.real(L_analytic * rot).astype(np.float32)
+    R_rot = np.real(R_analytic * np.conj(rot)).astype(np.float32)
+    return L_rot, R_rot
+
+
+def subharmonic_resonator(dur_s: float, carrier_hz: float,
+                          depth: int = 4, vol: float = 0.08,
+                          seed: int = 0) -> tuple:
+    n  = len(L)
+    t  = np.arange(n, dtype=np.float64) / SR
+    az = 2 * np.pi * t / az_period
+    Laz = (L * np.cos(az) - R * np.sin(az)).astype(np.float32)
+    Raz = (L * np.sin(az) + R * np.cos(az)).astype(np.float32)
+    el       = el_depth * np.sin(2 * np.pi * t / el_period + np.pi / 3).astype(np.float32)
+    el_gain  = (1.0 + 0.18 * el).astype(np.float32)
+    el_spread = np.clip(1.0 - 0.10 * el, 0.70, 1.30).astype(np.float32)
+    return (Laz * el_gain * el_spread), (Raz * el_gain / el_spread)
+
+
+def subharmonic_resonator(dur_s: float, carrier_hz: float,
+                          depth: int = 4, vol: float = 0.08,
+                          seed: int = 0) -> tuple:
+    """
+    Generates subharmonics f/2, f/3, ..., f/(depth+1) below carrier.
+    Creates body resonance (chest 60 Hz, skull 120 Hz) without demanding low-freq drivers.
+    """
+    n = int(dur_s * SR)
+    t = np.arange(n, dtype=np.float64) / SR
+    out = np.zeros(n, dtype=np.float64)
+    for i in range(1, depth + 1):
+        f_sub = carrier_hz / (i + 1)
+        if f_sub < 20.0:
+            continue
+        detune = 0.004 * np.sin(2*np.pi * 0.007 * t * i + seed * 0.3)
+        phase = 2*np.pi * np.cumsum(f_sub + detune) / SR
+        amp = 1.0 / ((i + 1)**1.3)
+        out += amp * np.sin(phase)
+    out /= (np.max(np.abs(out)) + 1e-9)
+    L = (out * vol).astype(np.float32)
+    # Haas decorrelation
+    delay = int(0.0008 * SR)
+    R = np.roll(L, delay) * 0.96
+    return L, R
+
+
 # ══════════════════════════════════════════════════════════
 #  INFRA-MODULATION
 # ══════════════════════════════════════════════════════════
@@ -652,9 +738,9 @@ def ffr_prime_burst(carrier: float = 200.0,
                               vol_p=0.14, vol_s=0.045,
                               carrier_jitter=0.5, beat_jitter=0.0,
                               seed=7777, carrier_type=ctype)
-    bed = underbed_noise(dur_s, vol=0.022, seed=7778)
-    L = (L_b + iso + bed).astype(np.float32)
-    R = (R_b + iso + bed).astype(np.float32)
+    bed_L, bed_R = underbed_noise(dur_s, vol=0.022, seed=7778)
+    L = (L_b + iso + bed_L).astype(np.float32)
+    R = (R_b + iso + bed_R).astype(np.float32)
     fn   = min(int(7 * SR), len(L) // 3)
     ramp = np.linspace(0, 1, fn, np.float32)
     L[:fn] *= ramp;  R[:fn] *= ramp
@@ -667,13 +753,16 @@ def ffr_prime_burst(carrier: float = 200.0,
 def structured_quiet(dur_s: float = 60.0, vol: float = 0.012,
                      seed: int = 0) -> tuple:
     """Gateway-style internalization: near-silence with underbed only."""
-    bed = underbed_noise(dur_s, vol=vol, pink_w=0.55, brown_w=0.45, seed=seed)
-    fn = min(int(5.0 * SR), len(bed) // 4)
+    bed_L, bed_R = underbed_noise(dur_s, vol=vol, pink_w=0.55, brown_w=0.45, seed=seed)
+    fn = min(int(5.0 * SR), len(bed_L) // 4)
     ramp = np.linspace(0, 1, fn, np.float32)
-    bed = bed.copy()
-    bed[:fn] *= ramp
-    bed[-fn:] *= ramp[::-1]
-    return bed.astype(np.float32), bed.astype(np.float32)
+    bed_L = bed_L.copy()
+    bed_R = bed_R.copy()
+    bed_L[:fn] *= ramp
+    bed_L[-fn:] *= ramp[::-1]
+    bed_R[:fn] *= ramp
+    bed_R[-fn:] *= ramp[::-1]
+    return bed_L.astype(np.float32), bed_R.astype(np.float32)
 
 
 # ══════════════════════════════════════════════════════════

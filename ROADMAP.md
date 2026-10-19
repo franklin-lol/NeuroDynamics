@@ -5,7 +5,7 @@
 ## [DONE] Phase: GENESIS (Organic & Scientific)
 *   **Core Engine:** `psychoacoustic/` — 4+ тембральных режима.
 *   **Spatial Model:** аналитический HRTF Brown–Duda + Woodworth ITD.
-*   **Chaos Dynamics:** Lorenz-jitter биения (0.5–3 Hz).
+*   **Chaos Dynamics:** Chua circuit (двухскролльный аттрактор, автовключение для блоков ≥10 мин) + Lorenz-jitter биения (0.5–3 Hz).
 *   **Geometry:** φ-слой.
 *   **Smart Rendering:** CUE + PCM-24 FLAC.
 *   **Interactive CLI:** Dashboard генерации.
@@ -17,6 +17,11 @@
 ## [DONE] Phase: PERMANENT (God-Tier Polish v0.3)
 *   **Soft-gate v2 / soft ceiling / AM budget** — permanent listening.
 *   **Sweep-locked monaural + FocusMix** — iAwaken/Monroe-inspired layering.
+*   **Seamless joins:** zero-pause crossfade для идентичных несущих (carrier + carrier_type).
+*   **Subharmonic resonator:** f/2, f/3, f/4 телесный резонанс в глубоких профилях (GENESIS VOID CORE, SLEEP DEEP, HEALER/ORACLE void blocks).
+*   **Dual-wander tube saturate:** двухслойная thermal-drift модуляция (0.045 Hz + 0.012 Hz).
+*   **Hilbert spatial rotation:** квадратурная фазовая модуляция L/R (<10s period) без гребенчатого фильтра.
+*   **Phase-continuous carrier:** розовый микро-wander (±0.03 Hz) устраняет монотонный резонанс на длинных блоках.
 *   **Equal-power continuity + underbed + structured quiet.**
 *   **Dual-mode profiles:** permanent rest vs sharp-safe WARRIOR.
 *   **Honest science framing** in README (hypotheses, not clinical claims).
