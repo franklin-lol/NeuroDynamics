@@ -699,9 +699,9 @@ def ambient_bridge(carrier: float = 432.0,
                          carrier_jitter=1.2, beat_jitter=0.0,
                          seed=seed, carrier_type='soft')
     # Detuned drone: familiar warmth at session's carrier frequency
-    pad = detuned_drone(dur_s, carrier, detune_hz=0.18, vol=0.10,
-                        ctype='soft', seed=seed + 100)
-    L += pad; R += pad
+    pad_L, pad_R = detuned_drone(dur_s, carrier, detune_hz=0.18, vol=0.10,
+                                  ctype='soft', seed=seed + 100)
+    L += pad_L; R += pad_R
     # Wind: familiar texture, prevents absolute silence
     wind = resonant_wind_pad(dur_s, carrier, bw_hz=22.0, vol=0.07, seed=seed + 200)
     L += wind; R += wind
